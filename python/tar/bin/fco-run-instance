@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+import argparse
+import traceback
+import pprint
+
+from slipstream.util import nostdouterr
+from slipstream.ConfigHolder import ConfigHolder
+from slipstream.NodeDecorator import KEY_RUN_CATEGORY, RUN_CATEGORY_DEPLOYMENT
+from flexiant.FlexiantCommand import FlexiantCommand
+from flexiant.FlexiantClientCloud import FlexiantClientCloud
+
+class MainProgram(FlexiantCommand):
+
+    def __init__(self):
+        super(MainProgram, self).__init__()
+
+    def setProgramOptions(self):
+
+        parser=argparse.ArgumentParser()
+        parser.add_argument('--image-uuid', dest='imageUUID',nargs='*',
+                                help="The UUID of the Image")
+    
+        parser.add_argument('--cust-uuid', dest='customerUUID',nargs='*',
+                                help="The UUID of the Customer")
+    
+        parser.add_argument('--cust-username', dest='customerUsername',nargs='*',
+                               help="The Username of the Customer")
+    
+        parser.add_argument('--cust-password', dest='customerPassword',nargs='*',
+                               help="The password for the Customer")
+    
+        parser.add_argument('--api-host', dest='apiHost',nargs='*',
+                               help="Where the API lives")
+
+        parser.add_argument('--network-type', dest='networkType',nargs='*',
+                               help="Network Type")
+
+        parser.add_argument('--context', dest='contextScript',nargs='*',
+                               help="Context Script")
+
+        parser.add_argument('--public-key', dest='publicKey',nargs='*',
+                               help="SSH Public Key")
+
+        parser.add_argument('--vm-name', dest='vmName',nargs='*',
+                               help="VM Name")
+
+        parser.add_argument('--ram', dest='ram',nargs='*',
+                               help="RAM")
+                               
+        parser.add_argument('--cpu', dest='cpu',nargs='*',
+                               help="CPU Count")
+                               
+        parser.add_argument('--disk-size', dest='diskSize',nargs='*',
+                               help="Disk size in GB")                               
+
+        cmdargs=parser.parse_args()
+        image_uuid = cmdargs.imageUUID[0]
+        #print image_uuid
+        #print cmdargs.customerUUID[0]
+        #print cmdargs.contextScript
+        return
+
+    def _setUserInfo(self):
+        super(MainProgram, self)._setUserInfo()
+        self.userInfo['General.ssh.public.key'] = self.options.publicKey
+
+    def doWork(self):
+        print "doWork(): fco-run-instance 1"
+        pp = pprint.PrettyPrinter(indent=4, width=256)
+        pp.pprint(self.options)
+        print "==========="
+        
+        ss_node = {
+            'nodename': self.options.vmName,
+            'about' :  'this is set by fco-run-instance',
+            'image': {
+                'attributes': {
+                    'imageId': self.options.imageUUID
+                 },
+                'cloud_parameters': {
+                    'flexiant': {
+#                        'flexiant.instance.type': self.options.instance_type,
+#                        'flexiant.security.groups': self.options.security_groups
+                        'flexiant.ram': self.options.ram,
+                        'flexiant.cpu': self.options.cpu,
+                        'endpoint':'Just the endpoint!',
+                        'flexiant.endpoint':'decorated endpoint'
+                    },
+                    'Cloud': {
+                        'network': self.options.networkType
+                    }
+                },
+                'extra_disks': {}
+            },
+        }
+        #print ss_node
+        #with nostdouterr():
+        node = self._startImage(ss_node)
+        #print '%s, %s' % (node['id'], node['ip'])
+        print("node=" + str(node))
+        print 'Server UUID and IP: %s:%s:%s:%s' % (node['id'], node['password'], node['login'], node['ip'])
+
+    def _startImage(self, ss_node):
+        nodename = ss_node['nodename']
+
+        cc = FlexiantClientCloud(ConfigHolder(options={'verboseLevel': 0,
+                                                         KEY_RUN_CATEGORY: RUN_CATEGORY_DEPLOYMENT},
+                                                context={'foo': 'bar'}))
+        cc.initialization(self.userInfo)
+        try:
+            node = cc._startImage(self.userInfo,
+                                  cc._extractImageInfoFromNodeInfo(ss_node),
+                                  nodename, self.options.contextScript)
+        finally:
+            cc.finalization(self.userInfo)
+        
+        print "cc:" + str(cc)  
+        print "self:" + str(self)
+        print "_startImage(): node=" + str(node)
+        return node
+        # Not sure here if we are just to return id: and ip: , or the entire node dict
+        #return {'id': cc.vmGetId(node), 'ip': cc.vmGetIp(node)}
+
+
+if __name__ == "__main__":
+# leave the try... commented out while under development as it is much easire
+# to read the backtrace than try and work out where it's barfed from a single
+# line of output
+    try:
+        MainProgram()
+    except KeyboardInterrupt:
+        print '\n\nExecution interrupted by the user... goodbye!'
+    except Exception as e:
+        print "Something went wrong:"
+        print e
+        traceback.print_exc()
+        exit(1)
