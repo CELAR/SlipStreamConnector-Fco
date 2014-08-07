@@ -202,7 +202,7 @@ def get_prod_offer_uuid(server_client, prod_offer_name):
     print("Product Offer UUID for " + prod_offer_name + " is " + prod_offer_uuid)
     return prod_offer_uuid
 
-def list_thingy(server_client, uuid):
+def list_thingy(server_client, uuid, res_type):
     """ Get product offer UUID when given product offer name """
     sf1 = server_client.factory.create('searchFilter')
 #    print sf1
@@ -217,8 +217,31 @@ def list_thingy(server_client, uuid):
     sf1.filterConditions.append(fc1)
     # set filter condition values
     print sf1
-    result_set = server_client.service.listResources(searchFilter = sf1)
+    result_set = server_client.service.listResources(searchFilter = sf1, resourceType = res_type)
     print result_set
+    return result_set
+
+def list_image(server_client, uuid):
+    """ Get product offer UUID when given product offer name """
+    sf1 = server_client.factory.create('searchFilter')
+#    print sf1
+    #create filter conditions object
+    fc1 = server_client.factory.create('filterConditions')
+    # set filter condition values
+    fc1.condition = 'IS_EQUAL_TO'
+    fc1.field = 'resourceUUID'
+    fc1.value = uuid
+    # debug print statement
+#    print fc1
+    sf1.filterConditions.append(fc1)
+    # set filter condition values
+    print("=== Image Search filter ====")
+    print sf1
+    print("==========");
+    result_set = server_client.service.listResources(searchFilter = sf1, resourceType="IMAGE")
+    print("==== Result ====")
+    print result_set
+    print("=========");
     return result_set
 
 def create_disk(server_client, prod_offer, disk_size, disk_name, vdc_uuid):
@@ -237,7 +260,8 @@ def create_disk(server_client, prod_offer, disk_size, disk_name, vdc_uuid):
     disk_job = server_client.service.createDisk(skeletonDisk=skel_disk)
     disk_uuid = disk_job.itemUUID
     print("our newly created disk UUID=" + disk_uuid)
-    list_thingy(server_client, disk_uuid)
+    list_thingy(server_client, disk_uuid, res_type="DISK")
+    print("===========")
     return disk_uuid
 
 def add_resource_key(auth_client, server_uuid, key_name, key_value, key_type, key_weight):
@@ -294,8 +318,9 @@ def create_server(server_client, customerUUID, prod_offer, image_uuid, server_na
     cluster_result_set = server_client.service.listResources(resourceType = "CLUSTER")
     cluster_uuid = cluster_result_set.list[0].resourceUUID
     # Get VDC uuid
-    if vdc_uuid == '':
-        vdc_uuid = get_vdc_uuid(server_client)
+    #if vdc_uuid == '':
+    #    vdc_uuid = get_vdc_uuid(server_client)
+    
     # Create server
     server_data = server_client.factory.create('server')
 #    if inc_flag == 'TRUE':
@@ -311,12 +336,13 @@ def create_server(server_client, customerUUID, prod_offer, image_uuid, server_na
     disk_data = server_client.factory.create('disk')
     disk_data.resourceUUID = disk_uuid
     disk_data.resourceType = "DISK"
+    disk_data.vdcUUID = vdc_uuid
     print("Disk Data:")
     print(disk_data)
     print("Server Data:")
     print(server_data)
     #server_data.disks[0] = disk_data
-    disk_result = list_thingy(server_client, disk_uuid)
+    disk_result = list_thingy(server_client, disk_uuid, res_type="DISK")
     # Need somne validation here because failures go undetected
     print("disky result=")
     print(disk_result)
@@ -370,7 +396,7 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, s
                                 context_script=context_script)
     wait_for_install(server_client=auth_client, server_uuid=server_uuid)
     print "Calling create_nic for network " + config.NETWORK_TYPE
-    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=config.NETWORK_TYPE)
+    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=config.NETWORK_TYPE, vdc_uuid=vdc_uuid)
     print "create_nic returned nic_uuid: " + nic_uuid
     wait_for_resource(res_client=auth_client, res_uuid=nic_uuid, state='ACTIVE', res_type='NIC')
     print "nic uuid: " + nic_uuid
@@ -473,7 +499,7 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     vdc_uuid = setup_vdc(auth_client, 'VDC One')
     
     if (isVerbose):
-        print "VDC: " + vdc_uuid
+        print "Default VDC: " + vdc_uuid
         
     #image_uuid = setup_image(auth_client=auth_client, vdc_uuid=vdc_uuid)
     # Utilmately, We'll pass this in from SlipStream
@@ -481,13 +507,10 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     if (isVerbose):
         print("Details for image_uuid " + image_uuid + ":\n");
         
-    list_thingy(auth_client,image_uuid)    
+    img_ret = list_image(auth_client,image_uuid)    
+    vdc_uuid = img_ret.list[0].vdcUUID
+    print("Image resides in VDC " + vdc_uuid + " so we will use that one")
 
-    if (isVerbose):
-        print("Manually created disk:")
-        list_thingy(auth_client,'b16911e0-e6f9-3fb5-bafe-955f6dc878c5')
-    
-        
     product_offer = 'Standard Server'
     current_time = time.strftime("%Y-%m-%d %H:%M:%S")
     server_name = "Server " + current_time

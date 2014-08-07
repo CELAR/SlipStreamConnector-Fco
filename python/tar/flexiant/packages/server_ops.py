@@ -31,7 +31,7 @@ def get_vdc_uuid(server_client):
     vdc_uuid = vdc_result_set.list[0].resourceUUID
     return vdc_uuid
 
-def get_nic_uuid(auth_client, netTypeSought):
+def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
     """ function to find a nic of the desired type """
     sf2 = auth_client.factory.create('searchFilter')
     fc3 = auth_client.factory.create('filterConditions')
@@ -44,28 +44,32 @@ def get_nic_uuid(auth_client, netTypeSought):
     print network_result_set
     ourNet = ""
     for l in range(0, 2):
-        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID
-        # Exact match ?
-        if network_result_set.list[l].networkType.lower() == netTypeSought.lower():
-            ourNet = network_result_set.list[l].resourceUUID
-        # If Network Type being sought is Public, IP is also a valid choice, if we haven't already seen a more exact match
-        if ourNet == "" and netTypeSought.lower() == 'public' and network_result_set.list[l].networkType.lower() == 'ip':
-             ourNet = network_result_set.list[l].resourceUUID
+        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in vdc " + vdc_uuid
+        # Correct VDC ?
+        if network_result_set.list[l].vdcUUID == vdc_uuid:
+            print("Correct VDC, at least !")
+            # Exact match ?
+            if network_result_set.list[l].networkType.lower() == netTypeSought.lower():
+                ourNet = network_result_set.list[l].resourceUUID
+            # If Network Type being sought is Public, IP is also a valid choice, if we haven't already seen a more exact match
+            if ourNet == "" and netTypeSought.lower() == 'public' and network_result_set.list[l].networkType.lower() == 'ip':
+                 ourNet = network_result_set.list[l].resourceUUID
 
     print "Will use: " + ourNet
     return ourNet
 
 
-def create_nic(server_client, nic_count, network_type):
+def create_nic(server_client, nic_count, network_type, vdc_uuid):
     """ function to create a nic """
-    network_uuid = get_nic_uuid(server_client, network_type)
+    network_uuid = get_nic_uuid(server_client, network_type, vdc_uuid)
     print ("create_nic - network_uuid is:" + network_uuid)
     nic_data = server_client.factory.create('nic')
     nic_data.resourceType = 'NIC'
     nic_data.networkUUID = network_uuid
     nic_data.resourceName = "nic" + str(nic_count)
     # Get VDC uuid
-    nic_data.vdcUUID = get_vdc_uuid(server_client)
+    # nic_data.vdcUUID = get_vdc_uuid(server_client)
+    nic_data.vdcUUID = vdc_uuid
 #    print "nic data:"
 #    print nic_data
     print "Calling createNetworkInterface"
