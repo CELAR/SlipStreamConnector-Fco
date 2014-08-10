@@ -141,12 +141,6 @@ class FlexiantClientCloud(BaseCloudConnector):
     def _vm_get_id(self, vm):
         return vm['id']
 
-    def _getInstanceIpAddress(self, instance, ipType):
-        if ipType.lower() == 'private':
-            return (len(instance.private_ip) != 0) and instance.private_ip[0] or ''
-        else:
-            return (len(instance.public_ip) != 0) and instance.public_ip[0] or ''
-
     def _wait_vm_in_state_running_or_timeout(self, vm_id):
         self._wait_vm_in_state_or_timeout(vm_id, 'RUNNING',
                                           self.NODE_STARTUP_TIMEOUT)
