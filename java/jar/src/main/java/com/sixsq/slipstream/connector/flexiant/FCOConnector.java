@@ -55,7 +55,7 @@ import com.sixsq.slipstream.util.ProcessUtils;
 public class FCOConnector extends CliConnectorBase {
 
 	// The name of the cloud service.
-	public static final String CLOUD_SERVICE_NAME = "Flexiant";
+	public static final String CLOUD_SERVICE_NAME = "flexiant";
 	// So we can see what is going on
 	private final static Logger log = Logger.getLogger(FCOConnector.class.getName());
 
@@ -175,7 +175,7 @@ public class FCOConnector extends CliConnectorBase {
 			log.info("Orchestartion Context: " + isInOrchestrationContext(run));
 		}
 
-		String cookie = getCookieForEnvironmentVariable(user.getName());
+		String cookie = getCookieForEnvironmentVariable(user.getName(), run.getUuid());
 
 		Configuration configuration = Configuration.getInstance();
 
