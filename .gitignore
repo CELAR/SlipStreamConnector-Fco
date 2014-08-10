@@ -1,0 +1,17 @@
+*.class
+*.jar
+*.war
+*.ear
+.project
+.pydevproject
+pyunit.credentials.properties
+.coverage
+coverage.xml
+nosetests.xml
+**/target/
+*/*/target/*
+*.classpath
+*.settings/
+*~
+.idea
+*.iml
