@@ -1,25 +1,14 @@
 import re
 import time
-import pprint
-import sys
 
-from urlparse import urlparse
-
-from   slipstream.cloudconnectors.BaseCloudConnector import BaseCloudConnector
-from   slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT, KEY_RUN_CATEGORY
-from   slipstream.utils.tasksrunner import TasksRunner
-import slipstream.util as util
-import slipstream.exceptions.Exceptions as Exceptions
-from   flexiant.FCOMakeOrchestrator import MakeVM
-from   flexiant.FCODestroy import DestroyVM
-from   flexiant.FCOListVM import ListVM
-
-#from libcloud.compute.types import Provider
-#from libcloud.compute.providers import get_driver
-
-#from slipstream.cloudconnectors.cloudstack.libcloudPatch import patchLibcloud
-
-#import libcloud.security
+from slipstream.cloudconnectors.BaseCloudConnector import BaseCloudConnector
+from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT, \
+    KEY_RUN_CATEGORY
+from flexiant.FCOMakeOrchestrator import MakeVM
+from flexiant.FCODestroy import DestroyVM
+from flexiant.FCOListVM import ListVM
+from slipstream.exceptions.Exceptions import CloudError, \
+    ExecutionException
 
 
 def getConnector(configHolder):
@@ -34,385 +23,197 @@ class FlexiantClientCloud(BaseCloudConnector):
 
     cloudName = 'flexiant'
 
-    def __init__(self, configHolder):
-        print "init"
-        #libcloud.security.VERIFY_SSL_CERT = False
-        #patchLibcloud()
+    NODE_STATE_WAITING_SLEEP = 3
+    NODE_STARTUP_TIMEOUT = 2 * 60
 
+    def __init__(self, configHolder):
         super(FlexiantClientCloud, self).__init__(configHolder)
         self.run_category = getattr(configHolder, KEY_RUN_CATEGORY, None)
+        self.verbose = (int(self.verboseLevel) > 2) and True or False
 
-        self.setCapabilities(contextualization=True,
-                             direct_ip_assignment=True,
-                             orchestrator_can_kill_itself_or_its_vapp=True)
+        self._set_capabilities(contextualization=True,
+                               direct_ip_assignment=True,
+                               orchestrator_can_kill_itself_or_its_vapp=True)
 
-    def initialization(self, user_info):
-        print "initialization"
-        util.printStep('Initialize the Flexiant connector.')
-        #self._thread_local.driver = self._getDriver(user_info)
-        #self.sizes = self._thread_local.driver.list_sizes()
-        #self.images = self._thread_local.driver.list_images()
-        l=dir(self)
-        print(l)
-        print("==============")
+    def _initialization(self, user_info):
         self.user_info = user_info
 
-        #if self.run_category == RUN_CATEGORY_DEPLOYMENT:
-        #    self._importKeypair(user_info)
-        #elif self.run_category == RUN_CATEGORY_IMAGE:
-        #    #self._createKeypairAndSetOnUserInfo(user_info)
-        #    raise NotImplementedError('The run category "%s" is not yet implemented')
+    def _finalization(self, user_info):
+        pass
 
-    def finalization(self, user_info):
-        print "finalization"
+    def _start_image(self, user_info, node_instance, vm_name):
+        return self._start_image_on_flexiant(user_info, node_instance, vm_name)
+
+    def _start_image_on_flexiant(self, user_info, node_instance, vm_name):
+
+        self._print_detail("In _start_image_on_flexiant")
+        self._print_detail("user_info: " + str(user_info))
+        self._print_detail("node_instance: " + str(node_instance))
+
+        ram, cpu = self._get_cpu_and_ram(node_instance)
+        self._print_detail("ram is " + ram + ", CPU count is " + cpu)
+
+        image_id = node_instance.get_image_id()
+        self._print_detail("image ID: " + image_id)
+
+        instance_name = self._format_instance_name(vm_name)
+        self._print_detail("instance_name: " + instance_name)
+
+        ip_type = node_instance.get_network_type()
+        self._print_detail("ip_type: " + ip_type)
+
+        context_script = self._get_context_script(node_instance)
+        self._print_detail("context_script: " + context_script)
+
+        public_key = user_info.get_public_keys()
+
         try:
-            kp_name = self._userInfoGetKeypairName(user_info)
-            self._deleteKeypair(kp_name)
-        except:
-            pass
+            ret = MakeVM(
+                image_id,
+                user_info.get_cloud('user.uuid'),
+                user_info.get_cloud_username(),
+                user_info.get_cloud_password(),
+                user_info.get_cloud_endpoint(),
+                ip_type,
+                20,
+                ram,
+                cpu,
+                public_key,
+                self.verbose,
+                context_script)
+        except Exception as ex:
+            raise CloudError('Failed to start VM from image %s with: %s' % \
+                             (image_id, str(ex)))
 
-    def _startImage(self, user_info, image_info, instance_name, cloudSpecificData=None):
-        print "_startImage"
-        #self._thread_local.driver = self._getDriver(user_info)
-        return self._startImageOnFlexiant(user_info, image_info, instance_name, cloudSpecificData)
+        vm = dict(
+            networkType=ip_type,
+            instance=ret['server_uuid'],
+            ip=ret['ip'],
+            id=ret['server_uuid'],
+            password=ret['password'],
+            login=ret['login'])
 
-    def _startImageOnFlexiant(self, user_info, image_info, instance_name, cloudSpecificData=None):
-
-        print ("In _startImageOnFlexiant")
-        pp = pprint.PrettyPrinter(indent=4,width=256)
-
-        publicKey = user_info.get('General.ssh.public.key')
-        print ("publicKey=" + publicKey)
-        
-        print ("self:")
-        print ("==========")
-        pp.pprint(self)
-        print ("==========")
-                
-
-        print ("user_info:")
-        print ("==========")
-        pp.pprint(user_info)
-        print ("==========")
-                
-        print ("image_info:")
-        print ("==========")        
-        pp.pprint(image_info)
-        print("........")
-        for x in image_info:
-            print (x)
-            for y in image_info[x]:
-                print (y,':',image_info[x][y])
-                    
-        print ("========\n")
-
-        # The parameters are variously stuffed under 'Flexiant' and 'flexiant',
-        # so we can't just do:
-        #  imageRAM = image_info['cloud_parameters']['flexiant']['flexiant.ram']
-        # I don't have time to work out why this is, so the following code
-        # exists just to make this work
-        cloud_params = image_info['cloud_parameters']
-        #flex = image_info['cloud_parameters']['flexiant']
-        
-        # We use get() to do the dictionary lookup because it doesn't barf if not found
-        flex = cloud_params.get('flexiant')
-        if flex is None:
-            print ("Seems we are Flexiant")
-            #flex = image_info['cloud_parameters']['Flexiant']
-            flex = cloud_params.get('Flexiant')
-            imageRAM = flex.get('Flexiant.ram')
-            cpuCount = flex.get('Flexiant.cpu')
-        else:
-            imageRAM = flex.get('flexiant.ram')        
-            cpuCount = flex.get('flexiant.cpu')
-            
-        print("flex = " + str(flex))    
-        
-        # If it still isn't set, use a safe default
-        if imageRAM is None:
-            imageRAM = 512        
-            print "Defaulting RAM to " + imageRAM
-        
-        if cpuCount is None:
-            cpuCount = 1
-            print "Defaulting CPU count to " + str(cpuCount)
-        
-        print ("imageRAM is " + imageRAM + ", CPU count is " + str(cpuCount) + "\n")
-                    
-        print ("cloudSpecificData:")
-        print ("==========")        
-        pp.pprint(cloudSpecificData)
-        print ("========\n")
-        
-        print("Class list:\n")
-        print(self.__class__.__name__ + "\n")
-        print(user_info.__class__.__name__ + "\n")
-        print(instance_name.__class__.__name__ + "\n")
-        print(cloudSpecificData.__class__.__name__ + "\n")
-        print("\n========= _startImageOnFlexiant property/values: ==========\n")
-        for property, value in vars(self).iteritems():
-            print property, ": ", value
-        print("\n=========\n")
-                
-        imageId = self.getImageId(image_info)
-        instance_name = self.formatInstanceName(instance_name)
-        #instanceType = self._getInstanceType(image_info)
-        ipType = self.getCloudParameters(image_info)['network']
-        #keypair = self._userInfoGetKeypairName(user_info)
-          
-        print("image ID: " + imageId)        
-        print("instance_name: " + instance_name)
-        print("ipType: " + ipType)
-        # These are set in FlexiantCommand()
-        print("customerUsername " + user_info.get_cloud('username'))
-        print("customerPassword " + user_info.get_cloud('password'))
-        
-        print("customerUUID "     + user_info.get_cloud('user.uuid'))
-        print("endpoint "          + user_info.get_cloud('endpoint'))
-        
-        #print("RAM    "          + user_info.get_cloud('endpoint'))
-                             
-        print("\n++++++++++++++++\n")                            
-        print("locals:\n")        
-        print locals()
-        print("\n++++++++++++++++\n")
-
-
-        
-        #print("RAM is " + vmRAM)                                               
-                  
-        
-        #contextualizationScript = None
-        #if not self.isWindows():
-        #    keypair = self._userInfoGetKeypairName(user_info)
-        sys.stdout.flush()
-        print("\n----------------\n")
-        if cloudSpecificData is not None:
-            print ("cloudSpecificData is not None")
-        else:
-            print ("cloudSpecificData is None")
-                        
-        print("\n----------------\n")
-        sys.stdout.flush()        
-        
-        contextualizationScript = cloudSpecificData or None
-        print("\n-----------------------")
-        if contextualizationScript is not None:
-            print ("It is None\n")
-            print ("contextualizationScript=" + contextualizationScript)
-        else:
-            print ("contextualizationScript is not defined")
-            
-        print("\n-----------------------")
-                
-        ret=MakeVM(imageId, 
-               user_info.get_cloud('user.uuid'),
-               user_info.get_cloud('username'),              
-               user_info.get_cloud('password'),
-               user_info.get_cloud('endpoint'),
-               ipType,
-               20,
-               imageRAM,
-               cpuCount,
-               publicKey,
-               True,
-               contextualizationScript
-               )
-             
-        print("MakeVM() ret=" + str(ret))
-                                             
-        #securityGroups = [x.strip() for x in self._getCloudParameter(image_info, 'security.groups').split(',') if x]
-        #try:
-        #    size = [i for i in self.sizes if i.name == instanceType][0]
-        #except IndexError:
-        #    raise Exceptions.ParameterNotFoundException("Couldn't find the specified instance type: %s" % instanceType)
-        #try:
-        #    image = [i for i in self.images if i.id == imageId][0]
-        #except IndexError:
-        #    raise Exceptions.ParameterNotFoundException("Couldn't find the specified image: %s" % imageId)
-        #contextualizationScript = cloudSpecificData or None
-        #
-        #if size is None:
-        #    raise Exceptions.ParameterNotFoundException("Couldn't find the specified flavor: %s" % instanceType)
-        #if image is None:
-        #    raise Exceptions.ParameterNotFoundException("Couldn't find the specified image: %s" % imageId)
-        #
-        #instance = self._thread_local.driver.create_node(
-        #    name=instance_name,
-        #    size=size,
-        #    image=image,
-        #    ex_keyname=keypair,
-        #    ex_userdata=contextualizationScript,
-        #    ex_security_groups=securityGroups)
-
-        #ip = self._getInstanceIpAddress(instance, ipType)
-        #if not ip:
-        #    raise Exceptions.ExecutionException("Couldn't find a '%s' IP" % ipType)
-        vm=dict(networkType=ipType,
-                instance=ret['server_uuid'],
-                ip=ret['ip'],
-                id=ret['server_uuid'],
-                password=ret['password'],
-                login=ret['login'])
-        
-        #vm = dict(networkType=ipType,
-        #          instance=instance,
-        #          ip=ip,
-        #          id=instance.id)
-        print vm
         return vm
-        
 
-    def _getCloudSpecificData(self, node_info, node_number, nodename):
+    def _get_cpu_and_ram(self, node_instance):
+        ram = node_instance.get_ram()
+        cpu = node_instance.get_cpu()
+
+        if ram is None:
+            ram = '512'
+            self._print_detail("Defaulting RAM to " + ram)
+
+        if cpu is None:
+            cpu = '1'
+            self._print_detail("Defaulting CPU count to " + cpu)
+
+        return str(ram), str(cpu)
+
+    def _get_context_script(self, nodename):
         preExport = "<celar-code><![CDATA["
         preBoot = "echo This is the pre-boot"
-        postBoot="]]></celar-code>"
-        return self._getBootstrapScript(nodename,preExport,preBoot,postBoot)
+        postBoot = "]]></celar-code>"
+        return self._get_bootstrap_script(nodename, preExport, preBoot, postBoot)
 
-    def listInstances(self):
-        #return self._thread_local.driver.list_nodes()
-        print ("in FlexiantClientCloud.listInstances:")
-        print ("vms:")
-        print self.getVms()
-        print ("self:")
-        print dir(self)
-        print ("\nend of FlexiantClientCloud.listInstances\n")
-        return "FIXME"
+    def _stop_deployment(self):
+        ids = [vm['id'] for vm in self.get_vms().itervalues()]
+        self._stop_vms_by_ids(ids)
 
-    def _stopInstances(self, instances):
-        tasksRunnner = TasksRunner()
-        pp = pprint.PrettyPrinter(indent=4,width=256)
+    def _stop_vms_by_ids(self, ids):
+        self._print_detail("Stopping instances: " + str(ids))
+        for instance_id in ids:
+            self._print_detail("Stopping instance: " + str(instance_id))
+            try:
+                DestroyVM(
+                    instance_id,
+                    self.user_info.get_cloud('user.uuid'),
+                    self.user_info.get_cloud_username(),
+                    self.user_info.get_cloud_password(),
+                    self.user_info.get_cloud_endpoint(),
+                    self.verbose)
+            except Exception as ex:
+                raise CloudError('Failed to destroy VM %s with: %s' % \
+                                 (instance_id, str(ex)))
 
-        print("in _stopInstances")
-        l=dir(self)
-        print(l)
-        print("===")
-        l=dir(instances)
-        print(l)        
-        print("===")        
-        print ( " " + self.user_info.get_cloud('user.uuid') + " " + 
-               self.user_info.get_cloud('username') + " " +            
-               self.user_info.get_cloud('password') + " " +
-               self.user_info.get_cloud('endpoint'))
-               
-        for instance in instances:
-            #driver = self._getDriver(self.user_info)
-            print ("_stopInstances(): instance is:")
-            print ("==========")
-            print instance
-            ret=DestroyVM(instance, 
-                          self.user_info.get_cloud('user.uuid'),
-                          self.user_info.get_cloud('username'),              
-                          self.user_info.get_cloud('password'),
-                          self.user_info.get_cloud('endpoint'),        
-                          True
-                          )
-             
-            print("DestroyVM() ret=" + str(ret))
-            print ("==========")
-                    
-            #tasksRunnner.run_task(driver.destroy_node, (instance,))
-        #tasksRunnner.wait_tasks_finished()
-
-    def stopDeployment(self):
-        print ("in stopDeployment()")
-        pp = pprint.PrettyPrinter(indent=4,width=256)
-        pp.pprint(self)
-        print("==================")
-        instances = [vm['instance'] for vm in self.getVms().itervalues()]
-        self._stopInstances(instances)
-
-    def stopVmsByIds(self, ids):
-        pp = pprint.PrettyPrinter(indent=4,width=256)
-        print "stopVmsByIds:"
-        pp.pprint(self)
-        pp.pprint(ids)
-        print("=======")       
-        #instances = [i for i in self.listInstances() if i.id in ids]
-        #self._stopInstances(instances)
-        
-        # Commented out as it takes out the orchestrator for no apparent reason
-        # self._stopInstances(ids)
-        
-
-#    def _getDriver(self, userInfo):
-#        Flexiant = get_driver(Provider.FLEXIANT)
-#
-#        url = urlparse(userInfo.get_cloud('endpoint'))
-#        secure = (url.scheme == 'https')
-#
-#        return Flexiant(userInfo.get_cloud('username'),
-#                          userInfo.get_cloud('password'),
-#                          secure=secure,
-#                          host=url.hostname,
-#                          port=url.port,
-#                          path=url.path
-#                          );
-
-    def vmGetIp(self, vm):
+    def _vm_get_ip(self, vm):
         return vm['ip']
 
-    def vmGetId(self, vm):
+    def _vm_get_id(self, vm):
         return vm['id']
 
-    def getVmState(self, vmId):
-        print("^^^^^^^^^^^^^^")
-        print("in getVmState")
-        print("vmid: " + vmId)
-        print("^^^^^^^^^^^^^^")
-        ret=ListVM(vmId, 
-                   self.user_info.get_cloud('user.uuid'),
-                   self.user_info.get_cloud('username'),              
-                   self.user_info.get_cloud('password'),
-                   self.user_info.get_cloud('endpoint'),        
-                   True
-                   )         
-        print("getVMState: listVM() returned: " + ret)           
-        #return ret
-        return "Running"
-    
     def _getInstanceIpAddress(self, instance, ipType):
         if ipType.lower() == 'private':
             return (len(instance.private_ip) != 0) and instance.private_ip[0] or ''
         else:
             return (len(instance.public_ip) != 0) and instance.public_ip[0] or ''
 
-    def _importKeypair(self, user_info):
-        kp_name = 'ss-key-%i' % int(time.time())
-        public_key = self._getPublicSshKey(user_info)
+    def _wait_vm_in_state_running_or_timeout(self, vm_id):
+        self._wait_vm_in_state_or_timeout(vm_id, 'RUNNING',
+                                          self.NODE_STARTUP_TIMEOUT)
+
+    def _wait_vm_in_state_or_timeout(self, vm_id, state, timeout):
+        self._print_detail("Waiting %i sec for node %s to enter state '%s'." % \
+                           (timeout, vm_id, state))
+
+        vm_state = self._get_vm_state(vm_id)
+        t_end = time.time() + timeout
+        while vm_state != state:
+            if time.time() >= t_end:
+                raise CloudError("Node %s didn't reach state '%s' in %i sec." % \
+                                 (vm_id, state, timeout))
+            time.sleep(self.NODE_STATE_WAITING_SLEEP)
+            vm_state = self._get_vm_state(vm_id)
+
+    def _get_vm_state(self, vm_id):
         try:
-            kp = self._thread_local.driver.ex_import_keypair_from_string(kp_name, public_key)
-        except Exception as e:
-            raise Exceptions.ExecutionException('Cannot import the public key. Reason: %s' % e)
-        kp_name = kp.get('keyName', None)
-        self._userInfoSetKeypairName(user_info, kp_name)
-        return kp_name
+            ret = ListVM(
+                vm_id,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to list VM %s with: %s' % (vm_id, str(ex)))
+        if not ret:
+            raise CloudError('Failed to list VM %s: result is empty')
 
-    def _createKeypairAndSetOnUserInfo(self, user_info):
-        kp_name = 'ss-build-image-%i' % int(time.time())
-        kp = self._thread_local.driver.ex_create_keypair(kp_name)
-        self._userInfoSetPrivateKey(user_info, kp.private_key)
-        self._userInfoSetKeypairName(user_info, kp.name)
-        return kp.get('keyName', None)
+        return str(ret.status)
 
-    def _deleteKeypair(self, kp_name):
-        return self._thread_local.driver.ex_delete_keypair(kp_name)
+    def _build_image(self, user_info, node_instance):
+        # TODO: implement new image build.
+        #
+        # self._build_image_increment(user_info, node_instance, ip)
+        super(FlexiantClientCloud, self)._build_image()
 
-    def formatInstanceName(self, name):
-        name = self.removeBadCharInInstanceName(name)
-        return self.truncateInstanceName(name)
+    def listInstances(self):
+        # FIXME: implement if needed.
+        raise NotImplementedError()
 
-    def truncateInstanceName(self, name):
+    #
+    # Helper methods
+    #
+    def _format_instance_name(self, name):
+        name = self._remove_bad_char_in_instance_name(name)
+        return self._truncate_instance_name(name)
+
+    @staticmethod
+    def _truncate_instance_name(name):
         if len(name) <= 63:
             return name
         else:
             return name[:31] + '-' + name[-31:]
 
-    def removeBadCharInInstanceName(self, name):
+    @staticmethod
+    def _remove_bad_char_in_instance_name(name):
         try:
             newname = re.sub(r'[^a-zA-Z0-9-]', '', name)
             m = re.search('[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9]+)?', newname)
             return m.string[m.start():m.end()]
         except:
-            raise Exceptions.ExecutionException('Cannot handle the instance name "%s". Instance name can contain ASCII letters "a" through "z", the digits "0" through "9", and the hyphen ("-"), must be between 1 and 63 characters long, and can\'t start or end with "-" and can\'t start with digit' % name)
-
+            msg = ('Cannot handle the instance name "%s".' % name) + \
+                ' Instance name can contain ASCII letters "a" through "z", ' + \
+                'the digits "0" through "9", and the hyphen ("-"), must be ' + \
+                'between 1 and 63 characters long, and can\'t start or end ' + \
+                'with "-" and can\'t start with digit'
+            raise ExecutionException(msg)
