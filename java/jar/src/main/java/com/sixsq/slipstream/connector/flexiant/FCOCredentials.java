@@ -9,9 +9,9 @@ package com.sixsq.slipstream.connector.flexiant;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,19 +32,19 @@ import com.sixsq.slipstream.persistence.User;
 public class FCOCredentials extends CredentialsBase implements Credentials {
 
 	private final static Logger log = Logger.getLogger(FCOCredentials.class.getName());
-	
+
 	public FCOCredentials(User user, String connectorInstanceName) {
 		super(user);
 		log.info("In FCOCredentials()");
 		log.info("connectorInstanceName=" + connectorInstanceName==null?"NULL":connectorInstanceName );
-		
+
 		try {
 			cloudParametersFactory = new FCOUserParametersFactory(connectorInstanceName);
 		} catch (ValidationException e) {
 			e.printStackTrace();
 			throw (new SlipStreamRuntimeException(e));
 		}
-		log.info("Done FCOCredentials()");		
+		log.info("Done FCOCredentials()");
 	}
 
 	public String getKey() throws InvalidElementException {
