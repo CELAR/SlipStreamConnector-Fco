@@ -11,6 +11,7 @@ from packages.user_auth import ini_auth
 from packages.vdc_ops import count_vdc
 from packages.vdc_ops import create_vdc
 from packages.vdc_ops import get_vdc_uuid
+from packages.vdc_ops import get_first_vdc_in_cluster
 from packages.image_ops import count_image
 from packages.image_ops import fetch_image
 from packages.image_ops import get_image_uuid
@@ -459,8 +460,6 @@ def assert_billing(auth_client):
     print billing_results
     return billing_results
 
-
-
 def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoint, networkType, 
            diskSize, ramAmount, cpuCount, public_key, isVerbose=False, contextScript=None):
     """Main Function"""
@@ -494,23 +493,28 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
 
     # ignore setup.ini as we get all the args via the command line
 
-    
     auth_client = setup_test()
-    vdc_uuid = setup_vdc(auth_client, 'VDC One')
-    
-    if (isVerbose):
-        print "Default VDC: " + vdc_uuid
+
         
     #image_uuid = setup_image(auth_client=auth_client, vdc_uuid=vdc_uuid)
     # Utilmately, We'll pass this in from SlipStream
     #image_uuid = '99f2c947-cf15-3479-8ef5-a7bb9e4ae1e3'
     if (isVerbose):
         print("Details for image_uuid " + image_uuid + ":\n");
-        
-    img_ret = list_image(auth_client,image_uuid)    
-    vdc_uuid = img_ret.list[0].vdcUUID
-    print("Image resides in VDC " + vdc_uuid + " so we will use that one")
 
+    img_ret = list_image(auth_client,image_uuid)    
+    vdc_uuid_for_image = img_ret.list[0].vdcUUID
+    print("vdc_uuid_for_image is " + vdc_uuid_for_image)
+    
+    cluster_uuid_for_image = img_ret.list[0].clusterUUID
+    print("cluster_uuid_for_image is " + cluster_uuid_for_image)
+
+    customer_vdc_uuid = get_first_vdc_in_cluster(auth_client, cluster_uuid_for_image)
+    print("The VDC to use is: " + customer_vdc_uuid)
+    
+    # TODO Might need to setup VDC if user doesn't have one
+    #vdc_uuid = setup_vdc(auth_client, 'VDC One')
+    
     product_offer = 'Standard Server'
     current_time = time.strftime("%Y-%m-%d %H:%M:%S")
     server_name = "Server " + current_time
@@ -523,10 +527,10 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     # Don't actually need to create a disk, as the image gets cloned and a new disk
     # is created from that, but the fact the disk we create here exists is relied on 
     # by lower level code, so until that is cleaned up, leave this in place
-    disk_uuid = create_disk(auth_client,'Standard Disk','20',disk_name,vdc_uuid)
+    disk_uuid = create_disk(auth_client,'Standard Disk','20',disk_name, customer_vdc_uuid)
     
     server_data = build_server(auth_client=auth_client, customer_uuid=customerUUID, image_uuid=image_uuid,
-                               vdc_uuid=vdc_uuid, prod_offer=product_offer, server_name=server_name, 
+                               vdc_uuid=customer_vdc_uuid, prod_offer=product_offer, server_name=server_name, 
                                ram_amount=ramAmount, cpu_count=cpuCount, 
                                disk_uuid=disk_uuid, public_key=public_key, 
                                context_script=contextScript)

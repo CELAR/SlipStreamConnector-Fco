@@ -37,7 +37,8 @@ def count_vdc(vdc_client):
     sf.filterConditions.append(fc)
 #    print sf
     # call to listBillingEntities service with search filter
-    vdc_result_set = vdc_client.service.listResources(searchFilter = sf, resourceType = "VDC")
+    vdc_result_set = vdc_client.service.listResources(searchFilter=sf,
+                                                      resourceType="VDC")
     #extract number of VDCs from result set
 #    print vdc_result_set
     vdc_count = vdc_result_set.totalCount
@@ -48,7 +49,8 @@ def create_vdc(vdc_client, vdc_name, vdc_count=1000000):
     """ Create VDC for customer """
 #    print "vdc_count " + str(vdc_count)
     # Get cluster uuid
-    cluster_result_set = list_resource_type(res_client=vdc_client, res_type="CLUSTER")
+    cluster_result_set = list_resource_type(res_client=vdc_client,
+                                            res_type="CLUSTER")
     print cluster_result_set
     if cluster_result_set.totalCount == 0:
         print "Error No Cluster setup"
@@ -70,9 +72,9 @@ def create_vdc(vdc_client, vdc_name, vdc_count=1000000):
     return create_vdc_jobid.itemUUID
 
 
-def get_vdc_uuid (vdc_client, vdc_name='x'):
+def get_vdc_uuid(vdc_client, vdc_name='x'):
     """ Get VDC UUID or return none """
-    # setup search filter object	
+    # setup search filter object
     sf = vdc_client.factory.create('searchFilter')
     #create filter conditions object
     fc1 = vdc_client.factory.create('filterConditions')
@@ -92,7 +94,8 @@ def get_vdc_uuid (vdc_client, vdc_name='x'):
         sf.filterConditions.append(fc2)
 #    print sf
     # call to listBillingEntities service with search filter
-    vdc_result_set = vdc_client.service.listResources(searchFilter = sf, resourceType = "VDC")
+    vdc_result_set = vdc_client.service.listResources(searchFilter=sf,
+                                                      resourceType="VDC")
     #extract number of VDCs from result set
 #    print "VDC result set"
 #    print vdc_result_set
@@ -103,9 +106,22 @@ def get_vdc_uuid (vdc_client, vdc_name='x'):
     return vdc_uuid
 
 
+def get_first_vdc_in_cluster(auth_client, cluster_uuid):
+    # Function to find the first VDC the user has in the specified cluster
 
+    # Get a list of all VDCs the user has
+    vdc_result_set = auth_client.service.listResources(resourceType="VDC")
+    print("=== VDC RESULT SET ===")
+    print vdc_result_set
 
+    # Find the VDC that is in the same Cluster as the Image
+    for l in range(0, vdc_result_set.totalCount):
+        print(" resourceUUID: " + vdc_result_set.list[l].resourceUUID)
+        print("  clusterUUID: " + vdc_result_set.list[l].clusterUUID)
+        if (vdc_result_set.list[l].clusterUUID == cluster_uuid):
+            print("get_first_vdc_in_cluster returns: " +
+                  vdc_result_set.list[l].resourceUUID)
+            return vdc_result_set.list[l].resourceUUID
 
-
-
-
+    print("================== ===")
+    return ""
