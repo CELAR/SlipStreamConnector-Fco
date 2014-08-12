@@ -19,10 +19,6 @@
     <module>java</module>
   </modules>
 
-  <properties>
-    <sixsq.nexus>http://nexus.sixsq.com</sixsq.nexus>
-  </properties>
-
   <repositories>
       <repository>
           <releases>
@@ -33,7 +29,7 @@
           </snapshots>
           <id>slipstream.releases</id>
           <name>SlipStream Releases</name>
-          <url>${sixsq.nexus}/content/repositories/releases</url>
+          <url>http://nexus.sixsq.com/content/repositories/releases</url>
       </repository>
 
       <repository>
@@ -45,7 +41,7 @@
           </snapshots>
           <id>slipstream.snapshots</id>
           <name>SlipStream Snapshots</name>
-          <url>${sixsq.nexus}/content/repositories/snapshots</url>
+          <url>http://nexus.sixsq.com/content/repositories/snapshots</url>
       </repository>
   </repositories>
 
