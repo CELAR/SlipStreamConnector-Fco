@@ -44,7 +44,7 @@ def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
     print network_result_set
     ourNet = ""
     for l in range(0, network_result_set.totalCount):
-        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in vdc " + vdc_uuid
+        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in vdc " + network_result_set.list[l].vdcUUID
         # Correct VDC ?
         if network_result_set.list[l].vdcUUID == vdc_uuid:
             print("Correct VDC, at least !")
