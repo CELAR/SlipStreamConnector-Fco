@@ -16,9 +16,9 @@ logging.getLogger('suds.wsdl').setLevel(logging.INFO)
 
 def count_image(image_client):
     """ count Images for customer """
-    # setup search filter object	
+    # setup search filter object
     sf = image_client.factory.create('searchFilter')
-    # debug print statement	
+    # debug print statement
 #    print sf
     #create filter conditions object
     fc = image_client.factory.create('filterConditions')
@@ -33,15 +33,17 @@ def count_image(image_client):
     sf.filterConditions.append(fc)
 #    print sf
     # call to listBillingEntities service with search filter
-    image_result_set = image_client.service.listResources(searchFilter = sf, resourceType = "IMAGE")
+    image_result_set = image_client.service.listResources(searchFilter=sf,
+                                                          resourceType="IMAGE")
     #extract number of Images from result set
 #    print image_result_set
     image_count = image_result_set.totalCount
     return image_count
 
 
-def fetch_image(image_client, image_name, image_url, image_user, prod_offer_name, vdc_uuid,
-image_login='x', image_pw='x', image_count=1000000):
+def fetch_image(image_client, image_name, image_url, image_user,
+prod_offer_name, vdc_uuid, image_login='x', image_pw='x',
+image_count=1000000):
     """ Fetch Image for customer """
     if image_count == 1000000:
         inc_flag = 'FALSE'
@@ -57,9 +59,9 @@ image_login='x', image_pw='x', image_count=1000000):
     skel_image.resourceType = "IMAGE"
     skel_image.vdcUUID = vdc_uuid
     # Get product offer uuid
-    # setup search filter object	
+    # setup search filter object
     sf1 = image_client.factory.create('searchFilter')
-    # debug print statement	
+    # debug print statement
 #    print sf1
     #create filter conditions object
     fc1 = image_client.factory.create('filterConditions')
@@ -73,7 +75,8 @@ image_login='x', image_pw='x', image_count=1000000):
 #    print fc1
     sf1.filterConditions.append(fc1)
  #    print sf1
-    prod_offer_result_set = image_client.service.listResources(searchFilter = sf1, resourceType = "PRODUCTOFFER")
+    prod_offer_result_set = image_client.service.listResources(searchFilter=sf1,
+                                                               resourceType="PRODUCTOFFER")
     prod_offer_uuid = prod_offer_result_set.list[0].resourceUUID
     skel_image.productOfferUUID = prod_offer_uuid
     fetch_params = image_client.factory.create('fetchParameters')
@@ -114,7 +117,8 @@ def get_image_uuid(image_client, image_name='x'):
         sf.filterConditions.append(fc2)
 #    print sf
     # call to listBillingEntities service with search filter
-    image_result_set = image_client.service.listResources(searchFilter = sf, resourceType = "IMAGE")
+    image_result_set = image_client.service.listResources(searchFilter=sf,
+                                                          resourceType="IMAGE")
     #extract number of Images from result set
 #    print "image result set"
 #    print image_result_set
@@ -144,7 +148,7 @@ def wait_for_image(image_client, image_uuid, status):
     sf.filterConditions.append(fc2)
 #    print "sf:"
 #    print sf
-    image_result = image_client.service.listResources(searchFilter = sf, resourceType = 'IMAGE')
+    image_result = image_client.service.listResources(searchFilter=sf, resourceType='IMAGE')
 #    print image_created
     i = 0
 #    print "image created count:" + str(image_created.totalCount)
@@ -154,13 +158,14 @@ def wait_for_image(image_client, image_uuid, status):
         i = i + 1
         # wait a while
         time.sleep(10)
-        image_result = image_client.service.listResources(searchFilter = sf, resourceType = 'IMAGE')
+        image_result = image_client.service.listResources(searchFilter=sf, resourceType='IMAGE')
 #        print "image created count:" + str(image_created.totalCount)
     if image_result.totalCount == 1:
         return_val = 0
     else:
         return_val = 1
     return return_val
+
 
 def publish_image(client, res_uuid, tag, excl_flag):
     """Function to publish resources, mainly images and bento templates"""
@@ -179,8 +184,3 @@ def revoke_image(client, res_uuid, tag, excl_flag):
          publishTo=tag, exclude=excl_flag)
     print worked_flag
     return worked_flag
-
-
-
-
-
