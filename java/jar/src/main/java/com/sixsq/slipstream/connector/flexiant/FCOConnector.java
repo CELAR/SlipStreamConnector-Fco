@@ -512,7 +512,6 @@ public class FCOConnector extends CliConnectorBase {
 
 		// Path needs to match that in python/rpm/pom.xml
 		return INSTALL_PATH + "/fco-run-instance "
-				+ " -v "	// bodge
 				+ getRequiredParams(user)
 				+ " --image-uuid " + imageId
 				+ " --network-type " + getNetworkType(run)
