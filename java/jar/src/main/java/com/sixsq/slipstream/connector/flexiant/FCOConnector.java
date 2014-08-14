@@ -135,7 +135,9 @@ public class FCOConnector extends CliConnectorBase {
 		// On success, the startup script (is expected to) spit out
 		// just a UUID and it's IP address. We return just a bit more than
 		// that so pull out the bits we need
-		String[] instanceData = parseResult(result);
+		log.info("Launch gave us back: " + result);
+		
+		String[] instanceData = parseRunInstanceResult(result);
 
 		log.info("instanceData: " + instanceData[0] + " " + instanceData[1]);
 
@@ -273,42 +275,42 @@ public class FCOConnector extends CliConnectorBase {
 				+ "#eval ${INSTALL_EXEC}";  // N.B. The # character is needed for the Perl split() to latch on to
 	}
 
-	private String[] parseResult(String result)
-			throws SlipStreamClientException {
-
-		final String completedMsg = "Server UUID and IP:";
-
-		log.info("parseResult: result is" + result);
-
-		if (result == null){
-			throw (new SlipStreamClientException("Got null result for launch command"));
-		}
-
-		int n = result.indexOf(completedMsg);
-		log.info("parseReuslt: n is " + n);
-
-		if (n > -1){
-			String res = result.substring(completedMsg.length()+n);
-			log.info("parseResult(): " + res);
-			String[] parts = res.trim().split(":");
-
-			// Should be four elements, as the substring() junked the "Server UUID..." part
-			if (parts.length == 4){
-				String[] answer = new String[2];
-
-				answer[0] = parts[0];	// Server UUID
-				answer[1] = parts[3];	// Server IP
-				log.info("Server UUID plus IP: " + answer[0] + " " + answer[1]);
-				return answer;
-			}
-		}
-
-		// Assume it was an error if we didn't see the string that
-		// tells us what the server UUID and IP were
-
-		throw (new SlipStreamClientException("Error returned by launch command. Got: " + result));
-
-	}
+//	private String[] parseResult(String result)
+//			throws SlipStreamClientException {
+//
+//		final String completedMsg = "Server UUID and IP:";
+//
+//		log.info("parseResult: result is" + result);
+//
+//		if (result == null){
+//			throw (new SlipStreamClientException("Got null result for launch command"));
+//		}
+//
+//		int n = result.indexOf(completedMsg);
+//		log.info("parseReuslt: n is " + n);
+//
+//		if (n > -1){
+//			String res = result.substring(completedMsg.length()+n);
+//			log.info("parseResult(): " + res);
+//			String[] parts = res.trim().split(":");
+//
+//			// Should be four elements, as the substring() junked the "Server UUID..." part
+//			if (parts.length == 4){
+//				String[] answer = new String[2];
+//
+//				answer[0] = parts[0];	// Server UUID
+//				answer[1] = parts[3];	// Server IP
+//				log.info("Server UUID plus IP: " + answer[0] + " " + answer[1]);
+//				return answer;
+//			}
+//		}
+//
+//		// Assume it was an error if we didn't see the string that
+//		// tells us what the server UUID and IP were
+//
+//		throw (new SlipStreamClientException("Error returned by launch command. Got: " + result));
+//
+//	}
 
 	private void validate(Run run, User user) throws ValidationException, SlipStreamException {
 		validateCredentials(user);
