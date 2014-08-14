@@ -6,6 +6,8 @@ import sys
 
 sys.path.insert(1, '.')
 
+import slipstream.exceptions.Exceptions as Exceptions
+
 # import functions from files in packages folder
 from packages.user_auth import ini_auth
 from packages.vdc_ops import count_vdc
@@ -240,6 +242,9 @@ def list_image(server_client, uuid):
     print sf1
     print("==========");
     result_set = server_client.service.listResources(searchFilter=sf1, resourceType="IMAGE")
+    if result_set.totalCount == 0 :        
+        raise Exceptions.ExecutionException("Image " + uuid + " not found or you do not have permissions to use it")
+ 
     print("==== Result ====")
     print result_set
     print("=========");
@@ -636,3 +641,5 @@ if __name__ == "__main__":
     out = out + ":" + ret['login']
     out = out + ":" + ret['ip']
     print out
+
+
