@@ -120,12 +120,12 @@ public class FCOConnector extends CliConnectorBase {
 			throw (new SlipStreamException(
 					"Failed getting run instance command", e));
 		}
-//		log.info("Command is: " + command);
+		log.info("Command is: " + command);
 
 		String result;
 		String[] commands = { "sh", "-c", command };
 		try {
-			result = ProcessUtils.execGetOutput(commands);
+			result = ProcessUtils.execGetOutput(commands, false);
 			log.info("execGetOutput returned: " + result);
 		} catch (IOException e) {
 			e.printStackTrace();
