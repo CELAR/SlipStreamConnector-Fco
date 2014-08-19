@@ -178,7 +178,17 @@ class FlexiantClientCloud(BaseCloudConnector):
         # TODO: implement new image build.
         #
         # self._build_image_increment(user_info, node_instance, ip)
-        super(FlexiantClientCloud, self)._build_image()
+        
+        #super(FlexiantClientCloud, self)._build_image()
+        self._buildImageOnFlexiant(userInfo, imageInfo)
+        
+    def _buildImageOnFlexiant(self, userInfo, imageInfo):
+        print("_buildImageOnFlexiant:")
+        print("=====================")
+        print userInfo
+        print("----")
+        print imageInfo
+        print("end _buildImageOnFlexiant()")    
 
     def listInstances(self):
         # FIXME: implement if needed.
