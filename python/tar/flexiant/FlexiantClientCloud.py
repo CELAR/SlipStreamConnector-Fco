@@ -7,6 +7,7 @@ from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT
 from flexiant.FCOMakeOrchestrator import MakeVM
 from flexiant.FCODestroy import DestroyVM
 from flexiant.FCOListVM import ListVM
+from flexiant.VMActions import StopVM
 from slipstream.exceptions.Exceptions import CloudError, \
     ExecutionException
 
@@ -180,16 +181,60 @@ class FlexiantClientCloud(BaseCloudConnector):
         # self._build_image_increment(user_info, node_instance, ip)
         
         #super(FlexiantClientCloud, self)._build_image()
-        self._buildImageOnFlexiant(userInfo, imageInfo)
+        self._buildImageOnFlexiant(user_info, node_instance)
         
-    def _buildImageOnFlexiant(self, userInfo, imageInfo):
+    def _buildImageOnFlexiant(self, user_info, node_instance):
         print("_buildImageOnFlexiant:")
         print("=====================")
-        print userInfo
+        print user_info
         print("----")
-        print imageInfo
+        print node_instance
+        
+        machine_name = node_instance.get_name()
+        vm = self._get_vm(machine_name)
+
+        print("\n VM: %s \n" % str(vm))
+        ip_address = vm['ip']
+        vm_uuid    = vm['server_uuid']
+        
+        print("_buildImageOnFlexiant(): ip_address=" + ip_address + ", uuid=" + vm_uuid)
+        waitUntilVMRunning(self, vm_uuid)
+        print("_buildImageOnFlexiant(): VM is running")
+        
+        # Now make the changes to the image
+        self._build_image_increment(user_info, node_instance, ip_address)
+        
+        # Stop the VM (needs to be stopped to image it)
+        try:
+            ret = StopVM(
+                vm_uuid,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
+                
+        # Image the VM's disk
+        
         print("end _buildImageOnFlexiant()")    
 
+    def waitUntilVMRunning(self, instanceId):
+        timeWait = 120
+        timeStop = time.time() + timeWait
+        state = ''
+        while state != 'RUNNING':
+            if time.time() > timeStop:
+                raise Exceptions.ExecutionException(
+                     'Timed out while waiting for instance "%s" enter in running state'
+                     % instanceId)
+            print("waitUntilVMRunning(): VMState is: " + state)      
+            time.sleep(1)
+            state = _get_vm_state(self, instanceId)
+            
+        print("waitUntilVMRunning(): VM is UP")
+        
     def listInstances(self):
         # FIXME: implement if needed.
         raise NotImplementedError()
