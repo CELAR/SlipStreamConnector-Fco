@@ -8,6 +8,7 @@ from flexiant.FCOMakeOrchestrator import MakeVM
 from flexiant.FCODestroy import DestroyVM
 from flexiant.FCOListVM import ListVM
 from flexiant.VMActions import StopVM
+from flexiant.VMActions import WaitUntilVMRunning
 from slipstream.exceptions.Exceptions import CloudError, \
     ExecutionException
 
@@ -198,7 +199,18 @@ class FlexiantClientCloud(BaseCloudConnector):
         vm_uuid    = vm['id']
         
         print("_buildImageOnFlexiant(): ip_address=" + ip_address + ", uuid=" + vm_uuid)
-        waitUntilVMRunning(self, vm_uuid)
+
+        try:
+            ret = WaitUntilVMRunning(
+                vm_uuid,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('VM %s did not make it to running state with: %s' % (vm_uuid, str(ex)))
+                
         print("_buildImageOnFlexiant(): VM is running")
         
         # Now make the changes to the image
