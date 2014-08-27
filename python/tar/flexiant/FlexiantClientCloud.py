@@ -193,9 +193,9 @@ class FlexiantClientCloud(BaseCloudConnector):
         machine_name = node_instance.get_name()
         vm = self._get_vm(machine_name)
 
-        print("\n VM: %s \n" % str(vm))
+        print("\n vm: %s \n" % str(vm))
         ip_address = vm['ip']
-        vm_uuid    = vm['server_uuid']
+        vm_uuid    = vm['id']
         
         print("_buildImageOnFlexiant(): ip_address=" + ip_address + ", uuid=" + vm_uuid)
         waitUntilVMRunning(self, vm_uuid)
