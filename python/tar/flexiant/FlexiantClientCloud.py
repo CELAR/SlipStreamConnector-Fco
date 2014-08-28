@@ -200,8 +200,8 @@ class FlexiantClientCloud(BaseCloudConnector):
         vm_uuid    = vm['id']
         
         # Username and password need to be copied to the node info dict 
-        node_instance.set('Flexiant.user', vm['login'])
-        node_instance.set('Flexiant.password', vm['password'])
+        #node_instance.set('Flexiant.user', vm['login'])
+        #node_instance.set('Flexiant.password', vm['password'])
         
         print("node_instance is now:")
         print node_instance
@@ -222,7 +222,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("_buildImageOnFlexiant(): VM is running")
         
         # Now make the changes to the image
-        self._build_image_increment(user_info, node_instance, ip_address)
+        #self._build_image_increment(user_info, node_instance, ip_address)
         
         # Stop the VM (needs to be stopped to image it)
         try:
