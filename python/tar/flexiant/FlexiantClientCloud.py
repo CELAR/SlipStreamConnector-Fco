@@ -199,7 +199,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         vm_uuid    = vm['id']
         
         # Username and password need to be copied to the node info dict 
-        node_instance['Flexiant.user'] = vm.user
+        node_instance['Flexiant.user'] = vm.login
         node_instance['Flexiant.password'] = vm.password
         
         print("node_instance is now:")
