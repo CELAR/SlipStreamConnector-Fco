@@ -8,6 +8,7 @@ from packages.resource_ops import list_resource_type
 from packages.resource_ops import list_resource
 
 # import datetime for filename gen
+import sys
 import datetime
 import time
 
@@ -72,6 +73,7 @@ def image_disk(auth_client, server_uuid, diskIndex):
     print("Details for newly created image:")
     newimg_ret = list_resource(auth_client, job_ret.itemUUID,"IMAGE")
     print newimg_ret.list[0]
+    sys.stdout.flush()
     return newimg_ret.list[0]
 
 def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
