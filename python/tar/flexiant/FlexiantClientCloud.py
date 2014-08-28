@@ -198,6 +198,13 @@ class FlexiantClientCloud(BaseCloudConnector):
         ip_address = vm['ip']
         vm_uuid    = vm['id']
         
+        # Username and password need to be copied to the node info dict 
+        node_instance['Flexiant.user'] = vm.user
+        node_instance['Flexiant.password'] = vm.password
+        
+        print("node_instance is now:")
+        print node_instance
+         
         print("_buildImageOnFlexiant(): ip_address=" + ip_address + ", uuid=" + vm_uuid)
 
         try:
