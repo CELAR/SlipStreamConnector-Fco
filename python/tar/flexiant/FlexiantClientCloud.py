@@ -7,6 +7,7 @@ from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT
 from flexiant.FCOMakeOrchestrator import MakeVM
 from flexiant.FCODestroy import DestroyVM
 from flexiant.FCOListVM import ListVM
+from flexiant.ImageActions import ImageDisk
 from flexiant.VMActions import StopVM
 from flexiant.VMActions import WaitUntilVMRunning
 from slipstream.exceptions.Exceptions import CloudError, \
@@ -236,8 +237,21 @@ class FlexiantClientCloud(BaseCloudConnector):
             raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
                 
         # Image the VM's disk
+        try:
+            ret = ImageDisk(
+                vm_uuid,
+                0,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to create image from disk of VM %s with: %s' % (vm_uuid, str(ex)))
         
+        print ("UUID of new image is " + ret.resourceUUID)
         print("end _buildImageOnFlexiant()")    
+        return ret.resourceUUID
 
     def waitUntilVMRunning(self, instanceId):
         timeWait = 120

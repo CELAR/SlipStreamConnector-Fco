@@ -6,9 +6,6 @@ from packages.server_ops import list_server
 from packages.resource_ops import list_resource_name
 from packages.resource_ops import list_resource_type
 from packages.resource_ops import list_resource
-from packages.server_ops import wait_for_server
-from packages.server_ops import get_server_state
-from packages.server_ops import change_server_status
 
 # import datetime for filename gen
 import datetime
@@ -31,33 +28,6 @@ def setup():
     auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
     return auth_client
 
-def stop_server(auth_client, server_uuid):
-    """Function to stop server"""
-    # Chevk it's state first, as it is an error to stop it when it is already stopped (or in any other state
-    # apart from running. 
-    server_state = get_server_state(auth_client, server_uuid)
-    
-    if (server_state == 'STARTING'):
-        print("Server appears to be starting; waiting until it has completed before stopping")
-        ret = wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-        if (ret != 0):
-            raise Exception("Server not in RUNNING state, cannot be stopped")
-                        
-        server_state = get_server_state(auth_client, server_uuid)
-        # Fall-thru if the server made it to running state
-        #print("fall-thru")
-    
-    if (server_state == 'RUNNING'):
-        change_server_status(server_client=auth_client, server_uuid=server_uuid, state='STOPPED')
-
-    # Check we actually made it to STOPPED state
-    ret = wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='STOPPED')
-    if (ret != 0):
-        raise Exception("Server failed to STOP") 
-        
-    server_state = get_server_state(auth_client, server_uuid)
-    return server_state
-
 
 def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
     config.get_config("")
@@ -77,9 +47,34 @@ def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPass
             raise Exception("Server did not get to RUNNING state")
 
     return server_state
-    
 
-def StopVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
+def image_disk(auth_client, server_uuid, diskIndex):
+    # Details of the server
+    print("Details for the server we will Image:")
+    res=list_server(auth_client, server_uuid)
+    print("============================")
+    
+    # Image it's disk
+    print("===")
+    print res.disks[diskIndex]
+    print("===")
+    image_data = auth_client.factory.create('image')
+    image_data.baseUUID = res.disks[diskIndex].resourceUUID
+    image_data.vmSupport = True
+    image_data.defaultUser="ubuntu"
+    image_data.genPassword = True
+    image_data.size = 20
+    print("Create Image input:")
+    print image_data
+    
+    job_ret = auth_client.service.createImage(image_data)
+    print job_ret
+    print("Details for newly created image:")
+    newimg_ret = list_resource(auth_client, job_ret.itemUUID,"IMAGE")
+    print newimg_ret.list[0]
+    return newimg_ret.list[0]
+
+def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
 
     # Actually just defines the global variables now (since all config bits are passed on the command line)
     config.get_config("")
@@ -88,11 +83,11 @@ def StopVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoi
     config.USER_LOGIN = customerUsername
     config.USER_PASSWORD = customerPassword
     config.HOST_NAME = endpoint
-    # config.NETWORK_TYPE  = networkType
 
     auth_client = setup()
-    server_state = stop_server(auth_client, server_uuid)
-    return server_state
+    
+    image_state = image_disk(auth_client, server_uuid, 0)
+    return image_state
 
 if __name__ == "__main__":
     """Main Function"""
@@ -116,15 +111,21 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', dest='isVerbose', action='store_true',
                             help="Whether to print diagnostics as we go")
 
+    parser.add_argument('--action', dest='actionRequested', nargs='*',
+                            help="WHat to do")                            
+
     cmdargs = parser.parse_args()
 
     server_uuid = cmdargs.serverId[0]
     print cmdargs
-    ret = StopVM(cmdargs.serverId[0],
-               cmdargs.customerUUID[0],
-               cmdargs.customerUsername[0],
-               cmdargs.customerPassword[0],
-               cmdargs.apiHost[0],
-               cmdargs.isVerbose)
-
+    
+    if (cmdargs.actionRequested[0] == "ImageDisk"):
+        ret = ImageDisk(cmdargs.serverId[0],
+                   0,
+                   cmdargs.customerUUID[0],
+                   cmdargs.customerUsername[0],
+                   cmdargs.customerPassword[0],
+                   cmdargs.apiHost[0],
+                   cmdargs.isVerbose)
+        print ret
 
