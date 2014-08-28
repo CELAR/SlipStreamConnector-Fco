@@ -257,8 +257,8 @@ class FlexiantClientCloud(BaseCloudConnector):
         print ("UUID of new image is " + ret.resourceUUID)
         print("end _buildImageOnFlexiant()")    
         
-        #node_instance.set_image_attributes({'Flexiant.user': vm['login']})
-        #node_instance.set_image_attributes({'Flexiant.password': vm['password']})                                           
+        node_instance.set_image_attributes({'Flexiant.user': vm['login']})
+        node_instance.set_image_attributes({'Flexiant.password': vm['password']})                                           
         
         return ret.resourceUUID
 
