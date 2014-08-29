@@ -263,7 +263,10 @@ class FlexiantClientCloud(BaseCloudConnector):
         print node_instance
         print("-----------")
         print("end _buildImageOnFlexiant()")
-                
+            
+        # make it fail so we can debug FCO image issues
+        raise Exception("Image needs checked")
+        
         return ret.resourceUUID
 
     def waitUntilVMRunning(self, instanceId):
