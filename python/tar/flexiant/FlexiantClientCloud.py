@@ -265,9 +265,8 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("end _buildImageOnFlexiant()")
             
         # make it fail so we can debug FCO image issues
-        raise Exception("Image needs checked")
         
-        return ret.resourceUUID
+        return "NOT_THE_REAL_UUID_" + ret.resourceUUID
 
     def waitUntilVMRunning(self, instanceId):
         timeWait = 120
