@@ -188,7 +188,8 @@ class FlexiantClientCloud(BaseCloudConnector):
         # self._build_image_increment(user_info, node_instance, ip)
         
         #super(FlexiantClientCloud, self)._build_image()
-        self._buildImageOnFlexiant(user_info, node_instance)
+        ret = self._buildImageOnFlexiant(user_info, node_instance)
+        return ret
         
     def _buildImageOnFlexiant(self, user_info, node_instance):
         print("_buildImageOnFlexiant:")
