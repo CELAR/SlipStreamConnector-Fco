@@ -244,7 +244,13 @@ class FlexiantClientCloud(BaseCloudConnector):
             raise CloudError('VM %s did not make it to running state with: %s' % (vm_uuid, str(ex)))
                 
         print("_buildImageOnFlexiant(): VM is running")
-        
+
+        node_instance.set_image_attributes({'Flexiant.user': vm['login']})
+        node_instance.set_image_attributes({'Flexiant.password': vm['password']})                                           
+        print("node_instance before _build_image_increment() ")
+        print node_instance
+        print("--------")
+                
         # Now make the changes to the image
         self._build_image_increment(user_info, node_instance, ip_address)
         
@@ -275,10 +281,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         
         print ("UUID of new image is " + ret.resourceUUID)
     
-        node_instance.set_image_attributes({'Flexiant.user': vm['login']})
-        node_instance.set_image_attributes({'Flexiant.password': vm['password']})                                           
-        print("node_instance at end of _buildImageOnFlexiant(): ")
-        print node_instance
+
         print("-----------")
         print("end _buildImageOnFlexiant()")
             
