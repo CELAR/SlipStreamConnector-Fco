@@ -41,10 +41,10 @@ class FlexiantClientCloud(BaseCloudConnector):
     def _initialization(self, user_info):
         self.user_info = user_info
 
-        #if self.is_deployment():
-        #    self._import_keypair(user_info)
-        #elif self.is_build_image():
-        #    self._create_keypair_and_set_on_user_info(user_info)        
+        if self.is_deployment():
+            self._import_keypair(user_info)
+        elif self.is_build_image():
+            self._create_keypair_and_set_on_user_info(user_info)        
 
     def _finalization(self, user_info):
         pass
