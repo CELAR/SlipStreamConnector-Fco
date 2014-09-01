@@ -103,6 +103,24 @@ class FlexiantClientCloud(BaseCloudConnector):
 
         return vm
 
+    def _import_keypair(self, user_info):
+        kp_name = 'ss-key-%i' % int(time.time())
+        public_key = user_info.get_public_keys()
+        try:
+            kp = ex_import_keypair_from_string(kp_name, public_key)
+        except Exception as ex:
+            raise Exceptions.ExecutionException('Cannot import the public key. Reason: %s' % ex)
+        kp_name = kp.name
+        user_info.set_keypair_name(kp_name)
+        return kp_name
+
+    def _create_keypair_and_set_on_user_info(self, user_info):
+        kp_name = 'ss-build-image-%i' % int(time.time())
+        kp = ex_create_keypair(kp_name)
+        user_info.set_private_key(kp.private_key)
+        user_info.set_keypair_name(kp.name)
+        return kp.name
+    
     def _get_cpu_and_ram(self, node_instance):
         ram = node_instance.get_ram()
         cpu = node_instance.get_cpu()
