@@ -228,7 +228,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("_buildImageOnFlexiant(): VM is running")
         
         # Now make the changes to the image
-        #self._build_image_increment(user_info, node_instance, ip_address)
+        self._build_image_increment(user_info, node_instance, ip_address)
         
         # Stop the VM (needs to be stopped to image it)
         try:
