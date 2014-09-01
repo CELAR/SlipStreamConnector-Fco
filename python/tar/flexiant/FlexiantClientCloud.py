@@ -246,7 +246,11 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("_buildImageOnFlexiant(): VM is running")
 
         node_instance.set_image_attributes({'Flexiant.user': vm['login']})
-        node_instance.set_image_attributes({'Flexiant.password': vm['password']})                                           
+        node_instance.set_image_attributes({'Flexiant.password': vm['password']})            
+        
+        node_instance.set_image_atributes({'loginUser' : vm['login']})
+        node_instance.set_image_atributes({'login.password' : vm['password']})
+        
         print("node_instance before _build_image_increment() ")
         print node_instance
         print("--------")
