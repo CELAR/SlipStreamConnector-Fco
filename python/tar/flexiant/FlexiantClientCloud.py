@@ -109,7 +109,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         try:
             kp = ex_import_keypair_from_string(kp_name, public_key)
         except Exception as ex:
-            raise Exceptions.ExecutionException('Cannot import the public key. Reason: %s' % ex)
+            raise CloudError('Cannot import the public key. Reason: %s' % ex)
         kp_name = kp.name
         user_info.set_keypair_name(kp_name)
         return kp_name

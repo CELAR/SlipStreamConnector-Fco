@@ -523,10 +523,3 @@ def list_server(auth_client, server_uuid):
     print server_data
     return server_data
 
-
-
-
-
-
-
-
