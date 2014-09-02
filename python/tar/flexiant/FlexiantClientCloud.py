@@ -256,7 +256,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         # place for framework code to pick it up
         vm_password = vm['password']
         print("Passing password for VM: " + vm_password)
-        node_instance._NodeInstance__set(node_instance.get_cloud() + 'login.password', vm_password)
+        node_instance._NodeInstance__set(node_instance.get_cloud() + '.login.password', vm_password)
         
         print("node_instance before _build_image_increment() ")
         print node_instance
