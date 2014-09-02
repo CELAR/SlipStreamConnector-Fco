@@ -252,6 +252,12 @@ class FlexiantClientCloud(BaseCloudConnector):
         node_instance.set_image_attributes({'loginUser' : vm['login']})
         node_instance.set_image_attributes({'login.password' : vm['password']})
         
+        # Temporary bodge to set password on NodeInstance object in the correct
+        # place for framework code to pick it up
+        vm_password = vm['password']
+        print("Passing password for VM: " + vm_password)
+        node_instance._NodeInstance__set(node_instance.get_cloud() + 'login.password', vm_password)
+        
         print("node_instance before _build_image_increment() ")
         print node_instance
         print("--------")
