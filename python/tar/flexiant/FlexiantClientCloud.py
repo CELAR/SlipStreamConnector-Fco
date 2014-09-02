@@ -1,5 +1,6 @@
 import re
 import time
+import pprint
 
 from slipstream.cloudconnectors.BaseCloudConnector import BaseCloudConnector
 from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT, \
@@ -254,6 +255,9 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("node_instance before _build_image_increment() ")
         print node_instance
         print("--------")
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(node_instance)
+        print("---------")
                 
         # Now make the changes to the image
         self._build_image_increment(user_info, node_instance, ip_address)
