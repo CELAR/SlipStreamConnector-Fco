@@ -1,6 +1,5 @@
 import re
 import time
-import pprint
 
 from slipstream.cloudconnectors.BaseCloudConnector import BaseCloudConnector
 from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT, \
@@ -261,9 +260,6 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("node_instance before _build_image_increment() ")
         print node_instance
         print("--------")
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(node_instance)
-        print("---------")
                 
         # Now make the changes to the image
         self._build_image_increment(user_info, node_instance, ip_address)
@@ -294,14 +290,9 @@ class FlexiantClientCloud(BaseCloudConnector):
             raise CloudError('Failed to create image from disk of VM %s with: %s' % (vm_uuid, str(ex)))
         
         print ("UUID of new image is " + ret.resourceUUID)
-    
-
-        print("-----------")
         print("end _buildImageOnFlexiant()")
-            
-        # make it fail so we can debug FCO image issues
-        
-        return "NOT_THE_REAL_UUID_" + ret.resourceUUID
+
+        return ret.resourceUUID
 
     def waitUntilVMRunning(self, instanceId):
         timeWait = 120
@@ -310,7 +301,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         while state != 'RUNNING':
             if time.time() > timeStop:
                 raise Exceptions.ExecutionException(
-                     'Timed out while waiting for instance "%s" enter in running state'
+                     'Timed out while waiting for instance "%s" to reach running state'
                      % instanceId)
             print("waitUntilVMRunning(): VMState is: " + state)      
             time.sleep(1)
