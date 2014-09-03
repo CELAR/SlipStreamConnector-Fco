@@ -49,7 +49,7 @@ def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPass
 
     return server_state
 
-def image_disk(auth_client, server_uuid, diskIndex):
+def image_disk(auth_client, server_uuid, default_user, diskIndex):
     # Details of the server
     print("Details for the server we will Image:")
     res=list_server(auth_client, server_uuid)
@@ -61,7 +61,7 @@ def image_disk(auth_client, server_uuid, diskIndex):
     image_data = auth_client.factory.create('image')
     image_data.baseUUID = res.disks[diskIndex].resourceUUID
     image_data.vmSupport = True
-    image_data.defaultUser="ubuntu"
+    image_data.defaultUser=default_user
     image_data.genPassword = True
     # Image should be same size as the source disk
     image_data.size = res.disks[diskIndex].size
@@ -76,7 +76,7 @@ def image_disk(auth_client, server_uuid, diskIndex):
     sys.stdout.flush()
     return newimg_ret.list[0]
 
-def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
+def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPassword, endpoint, default_user="ubuntu", isVerbose=False):
 
     # Actually just defines the global variables now (since all config bits are passed on the command line)
     config.get_config("")
@@ -88,7 +88,7 @@ def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPa
 
     auth_client = setup()
     
-    image_state = image_disk(auth_client, server_uuid, 0)
+    image_state = image_disk(auth_client, server_uuid, default_user, 0)
     return image_state
 
 if __name__ == "__main__":
@@ -113,6 +113,9 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', dest='isVerbose', action='store_true',
                             help="Whether to print diagnostics as we go")
 
+    parser.add_argument('--default-user', dest='defaultUser', nargs='*',
+                            help="Default user to assign to the image")             
+    
     parser.add_argument('--action', dest='actionRequested', nargs='*',
                             help="WHat to do")                            
 
@@ -128,6 +131,7 @@ if __name__ == "__main__":
                    cmdargs.customerUsername[0],
                    cmdargs.customerPassword[0],
                    cmdargs.apiHost[0],
+                   cmdargs.defaultUser[0],
                    cmdargs.isVerbose)
         print ret
 

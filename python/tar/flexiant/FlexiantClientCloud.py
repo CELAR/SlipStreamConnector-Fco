@@ -277,6 +277,7 @@ class FlexiantClientCloud(BaseCloudConnector):
             raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
                 
         # Image the VM's disk
+        image_default_user = node_instance.get_username()
         try:
             ret = ImageDisk(
                 vm_uuid,
@@ -285,6 +286,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 self.user_info.get_cloud_username(),
                 self.user_info.get_cloud_password(),
                 self.user_info.get_cloud_endpoint(),
+                image_default_user,
                 self.verbose)
         except Exception as ex:
             raise CloudError('Failed to create image from disk of VM %s with: %s' % (vm_uuid, str(ex)))
