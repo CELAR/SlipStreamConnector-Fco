@@ -124,9 +124,7 @@ def DestroyVM(server_uuid, customerUUID, customerUsername, customerPassword, end
         print server_result
 
     # This will DELETE any resource relating to VM - Disk, NICs, Server, the lot !
-    print ("Not deleting server - uncomment line in DestroyVM() to re-enable!")
-    result="deletion not attempted"
-    #result = auth_client.service.deleteResource(resourceUUID=server_uuid, cascade=True)
+    result = auth_client.service.deleteResource(resourceUUID=server_uuid, cascade=True)
 
     print "deleteResource() result is:"
     print result

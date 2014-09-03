@@ -34,8 +34,8 @@ def setup():
 
 def stop_server(auth_client, server_uuid):
     """Function to stop server"""
-    # Chevk it's state first, as it is an error to stop it when it is already stopped (or in any other state
-    # apart from running. 
+    # Check it's state first, as it is an error to stop it when it is already stopped (or in any other state
+    # apart from running). 
     server_state = get_server_state(auth_client, server_uuid)
     
     if (server_state == 'STARTING'):

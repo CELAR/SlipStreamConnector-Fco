@@ -56,7 +56,6 @@ def image_disk(auth_client, server_uuid, diskIndex):
     print("============================")
     
     # Image it's disk
-    print("===")
     print res.disks[diskIndex]
     print("===")
     image_data = auth_client.factory.create('image')
@@ -64,7 +63,8 @@ def image_disk(auth_client, server_uuid, diskIndex):
     image_data.vmSupport = True
     image_data.defaultUser="ubuntu"
     image_data.genPassword = True
-    image_data.size = 20
+    # Image should be same size as the source disk
+    image_data.size = res.disks[diskIndex].size
     print("Create Image input:")
     print image_data
     
