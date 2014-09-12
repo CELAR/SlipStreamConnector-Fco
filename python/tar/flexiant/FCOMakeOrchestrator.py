@@ -503,8 +503,10 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     print("The VDC to use is: " + customer_vdc_uuid)
     
     # TODO Might need to setup VDC if user doesn't have one
-    vdc_uuid = create_vdc_in_cluster(auth_client, cluster_uuid_for_image)
-    print("VDC we created is " + vdc_uuid)
+    if (customer_vdc_uuid == '' or
+        customer_vdc_uuid == '7a7493ef-3dc5-3681-8342-e9d56e99fac2'):
+        vdc_uuid = create_vdc_in_cluster(auth_client, cluster_uuid_for_image)
+        print("VDC we created is " + vdc_uuid)
     
     product_offer = 'Standard Server'
     current_time = time.strftime("%Y-%m-%d %H:%M:%S")
