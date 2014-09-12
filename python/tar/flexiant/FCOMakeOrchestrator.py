@@ -10,14 +10,9 @@ import slipstream.exceptions.Exceptions as Exceptions
 
 # import functions from files in packages folder
 from packages.user_auth import ini_auth
-from packages.vdc_ops import count_vdc
 from packages.vdc_ops import create_vdc
-from packages.vdc_ops import get_vdc_uuid
 from packages.vdc_ops import get_first_vdc_in_cluster
-from packages.image_ops import count_image
-from packages.image_ops import fetch_image
 from packages.image_ops import get_image_uuid
-from packages.image_ops import wait_for_image
 # We have our own (amended) copy of this
 # from packages.server_ops import create_server
 from packages.server_ops import count_server
@@ -64,16 +59,28 @@ def setup_test():
     auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
     return auth_client
 
+def create_vdc_in_cluster(vdc_client, cluster_uuid):
+    """ Create VDC for customer """
+    ts = time.time()
+    vdc_name = "VDC " + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-def setup_vdc(auth_client, vdc_name):
-    """Function to check for VDC Create if missing"""
-    vdc_count = count_vdc(auth_client)
-#    print vdc_count
-    if vdc_count == 0:
-        vdc_uuid = create_vdc(vdc_client=auth_client, vdc_name=vdc_name)
-    else:
-        vdc_uuid = get_vdc_uuid(auth_client)
-    return vdc_uuid
+    # Setup vdc object
+    vdc_data = vdc_client.factory.create('vdc')
+    vdc_data.vdcName = vdc_name
+    vdc_data.resourceName = vdc_name
+    vdc_data.clusterUUID = cluster_uuid
+    
+    print("=== Settings for VDC Creation ====")
+    print vdc_data
+    print("==================================")
+    
+    create_vdc_job = vdc_client.service.createVDC(vdc_data)
+    
+    print("=== VDC Creation job ===")
+    print create_vdc_job
+    print("========================")
+    
+    return create_vdc_job.itemUUID
 
 def list_sshkeys(auth_client, customer_uuid):
     sf = auth_client.factory.create('searchFilter')
@@ -151,19 +158,6 @@ def AddKey(auth_client, server_uuid, customerUUID, publicKey):
     print attach_ret
 
     return attach_ret
-
-def setup_image(auth_client, vdc_uuid):
-    """Function to check for an image, if none set one up"""
-    image_count = count_image(auth_client)
-    if image_count == 0:
-        image_uuid = fetch_image(image_client=auth_client, image_name=config.IMAGE_NAME,
-             image_url=config.IMAGE_URL, image_user=config.IMAGE_USER,
-             prod_offer_name=config.PROD_OFFER, vdc_uuid=vdc_uuid)
-        wait_for_image(image_client=auth_client, image_uuid=image_uuid, status='ACTIVE')
-    else:
-        image_uuid = get_image_uuid(auth_client)
-
-    return image_uuid
 
 def get_prod_offer_uuid(server_client, prod_offer_name):
     """ Get product offer UUID when given product offer name """
@@ -323,9 +317,6 @@ def create_server(server_client, customerUUID, prod_offer, image_uuid, server_na
     # Get cluster uuid
     cluster_result_set = server_client.service.listResources(resourceType="CLUSTER")
     cluster_uuid = cluster_result_set.list[0].resourceUUID
-    # Get VDC uuid
-    # if vdc_uuid == '':
-    #    vdc_uuid = get_vdc_uuid(server_client)
 
     # Create server
     server_data = server_client.factory.create('server')
@@ -495,16 +486,9 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     for param in os.environ.keys():
         print "%20s %s" % (param, os.environ[param])
     print("=-=-=-=-=-=-\n")
-
-    # ignore setup.ini as we get all the args via the command line
-
-    
+   
     auth_client = setup_test()
 
-
-    # image_uuid = setup_image(auth_client=auth_client, vdc_uuid=vdc_uuid)
-    # Utilmately, We'll pass this in from SlipStream
-    # image_uuid = '99f2c947-cf15-3479-8ef5-a7bb9e4ae1e3'
     if (isVerbose):
         print("Details for image_uuid " + image_uuid + ":\n");
 
@@ -519,7 +503,8 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     print("The VDC to use is: " + customer_vdc_uuid)
     
     # TODO Might need to setup VDC if user doesn't have one
-    #vdc_uuid = setup_vdc(auth_client, 'VDC One')
+    vdc_uuid = create_vdc_in_cluster(auth_client, cluster_uuid_for_image)
+    print("VDC we created is " + vdc_uuid)
     
     product_offer = 'Standard Server'
     current_time = time.strftime("%Y-%m-%d %H:%M:%S")
