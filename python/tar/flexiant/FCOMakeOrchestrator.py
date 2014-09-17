@@ -383,7 +383,7 @@ def create_server(server_client, customerUUID, prod_offer, image_uuid, server_na
 
 
 def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, server_name, ram_amount, 
-                 cpu_count, networkType, disk_uuid, public_key, context_script):
+                 cpu_count, networkType, disk_uuid, cluster_uuid, public_key, context_script):
     """Function to create a server"""
     print "in build_server using image " + image_uuid
     server_uuid = create_server(server_client=auth_client, customerUUID=customer_uuid,
@@ -394,7 +394,8 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, s
                                 context_script=context_script)
     wait_for_install(server_client=auth_client, server_uuid=server_uuid)
     print "Calling create_nic for network " + config.NETWORK_TYPE
-    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=networkType, vdc_uuid=vdc_uuid)
+    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=networkType, 
+                          cluster_uuid=cluster_uuid, vdc_uuid=vdc_uuid)
     print "create_nic returned nic_uuid: " + nic_uuid
     wait_for_resource(res_client=auth_client, res_uuid=nic_uuid, state='ACTIVE', res_type='NIC')
     print "nic uuid: " + nic_uuid
@@ -527,7 +528,9 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
                                vdc_uuid=customer_vdc_uuid, prod_offer=product_offer, server_name=server_name, 
                                ram_amount=ramAmount, cpu_count=cpuCount,
                                networkType=networkType,
-                               disk_uuid=disk_uuid, public_key=public_key,
+                               disk_uuid=disk_uuid, 
+                               cluster_uuid=cluster_uuid_for_image,
+                               public_key=public_key,
                                context_script=contextScript)
 
     if (isVerbose):

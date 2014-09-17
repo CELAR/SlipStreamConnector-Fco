@@ -59,7 +59,7 @@ def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
     return ourNet
 
 
-def create_nic(server_client, nic_count, network_type, vdc_uuid):
+def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     """ function to create a nic """
     network_uuid = get_nic_uuid(server_client, network_type, vdc_uuid)
     print ("create_nic - network_uuid is:" + network_uuid)
