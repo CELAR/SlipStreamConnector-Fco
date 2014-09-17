@@ -67,6 +67,7 @@ def create_nic(server_client, nic_count, network_type, vdc_uuid):
     nic_data.resourceType = 'NIC'
     nic_data.networkUUID = network_uuid
     nic_data.resourceName = "nic" + str(nic_count)
+    nic_data.networkType = network_type  
     # Get VDC uuid
     # nic_data.vdcUUID = get_vdc_uuid(server_client)
     nic_data.vdcUUID = vdc_uuid

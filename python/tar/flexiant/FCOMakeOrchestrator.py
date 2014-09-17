@@ -394,7 +394,7 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, s
                                 context_script=context_script)
     wait_for_install(server_client=auth_client, server_uuid=server_uuid)
     print "Calling create_nic for network " + config.NETWORK_TYPE
-    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=config.NETWORK_TYPE, vdc_uuid=vdc_uuid)
+    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=networkType, vdc_uuid=vdc_uuid)
     print "create_nic returned nic_uuid: " + nic_uuid
     wait_for_resource(res_client=auth_client, res_uuid=nic_uuid, state='ACTIVE', res_type='NIC')
     print "nic uuid: " + nic_uuid
