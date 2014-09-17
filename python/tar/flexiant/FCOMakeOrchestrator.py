@@ -526,7 +526,7 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     server_data = build_server(auth_client=auth_client, customer_uuid=customerUUID, image_uuid=image_uuid,
                                vdc_uuid=customer_vdc_uuid, prod_offer=product_offer, server_name=server_name, 
                                ram_amount=ramAmount, cpu_count=cpuCount,
-                               networkType,
+                               networkType=networkType,
                                disk_uuid=disk_uuid, public_key=public_key,
                                context_script=contextScript)
 
