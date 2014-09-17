@@ -91,7 +91,6 @@ def create_network(server_client, net_count, network_type, cluster_uuid, vdc_uui
     net_data = server_client.factory.create('network')
     net_data.resourceType = 'NETWORK'
     net_data.clusterUUID = cluster_uuid    
-    net_data.networkUUID = network_uuid
     net_data.vdcUUID     = vdc_uuid    
     net_data.resourceName = "net" + str(net_count)
     net_data.networkType = network_type  
