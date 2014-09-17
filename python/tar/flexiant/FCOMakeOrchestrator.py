@@ -382,7 +382,8 @@ def create_server(server_client, customerUUID, prod_offer, image_uuid, server_na
     return server_uuid
 
 
-def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, server_name, ram_amount, cpu_count, disk_uuid, public_key, context_script):
+def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, server_name, ram_amount, 
+                 cpu_count, networkType, disk_uuid, public_key, context_script):
     """Function to create a server"""
     print "in build_server using image " + image_uuid
     server_uuid = create_server(server_client=auth_client, customerUUID=customer_uuid,
@@ -525,6 +526,7 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     server_data = build_server(auth_client=auth_client, customer_uuid=customerUUID, image_uuid=image_uuid,
                                vdc_uuid=customer_vdc_uuid, prod_offer=product_offer, server_name=server_name, 
                                ram_amount=ramAmount, cpu_count=cpuCount,
+                               networkType,
                                disk_uuid=disk_uuid, public_key=public_key,
                                context_script=contextScript)
 
