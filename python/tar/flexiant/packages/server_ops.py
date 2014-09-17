@@ -65,16 +65,15 @@ def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     print ("create_nic - network_uuid is:" + network_uuid)
     nic_data = server_client.factory.create('nic')
     nic_data.resourceType = 'NIC'
+    nic_data.clusterUUID = cluster_uuid    
     nic_data.networkUUID = network_uuid
+    nic_data.vdcUUID     = vdc_uuid    
     nic_data.resourceName = "nic" + str(nic_count)
     nic_data.networkType = network_type  
-    # Get VDC uuid
-    # nic_data.vdcUUID = get_vdc_uuid(server_client)
-    nic_data.vdcUUID = vdc_uuid
-#    print "nic data:"
-#    print nic_data
-    print "Calling createNetworkInterface"
+
+    print "Calling createNetworkInterface:"
     print nic_data
+    
     nic_result_set = server_client.service.createNetworkInterface(nic_data)
 #    print "nic results set"
 #    print nic_result_set
