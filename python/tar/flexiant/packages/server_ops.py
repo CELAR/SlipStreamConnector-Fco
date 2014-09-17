@@ -31,7 +31,7 @@ def get_vdc_uuid(server_client):
     vdc_uuid = vdc_result_set.list[0].resourceUUID
     return vdc_uuid
 
-def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
+def get_nic_uuid(auth_client, netTypeSought, cluster_uuid):
     """ function to find a nic of the desired type """
     sf2 = auth_client.factory.create('searchFilter')
     fc3 = auth_client.factory.create('filterConditions')
@@ -44,10 +44,10 @@ def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
     print network_result_set
     ourNet = ""
     for l in range(0, network_result_set.totalCount):
-        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in vdc " + network_result_set.list[l].vdcUUID
-        # Correct VDC ?
-        if network_result_set.list[l].vdcUUID == vdc_uuid:
-            print("Correct VDC, at least !")
+        print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in Cluster " + network_result_set.list[l].clusterUUID
+        # Correct Cluster ?
+        if network_result_set.list[l].clusterUUID == cluster_uuid:
+            print("Correct Cluster, at least !")
             # Exact match ?
             if network_result_set.list[l].networkType.lower() == netTypeSought.lower():
                 ourNet = network_result_set.list[l].resourceUUID
@@ -61,7 +61,7 @@ def get_nic_uuid(auth_client, netTypeSought, vdc_uuid):
 
 def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     """ function to create a nic """
-    network_uuid = get_nic_uuid(server_client, network_type, vdc_uuid)
+    network_uuid = get_nic_uuid(server_client, network_type, cluster_uuid)
     print ("create_nic - network_uuid is:" + network_uuid)
     if (network_uuid == ''):
         network_uuid=create_network(server_client, nic_count, network_type, cluster_uuid, vdc_uuid)
