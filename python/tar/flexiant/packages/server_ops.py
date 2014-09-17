@@ -63,6 +63,10 @@ def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     """ function to create a nic """
     network_uuid = get_nic_uuid(server_client, network_type, vdc_uuid)
     print ("create_nic - network_uuid is:" + network_uuid)
+    if (network_uuid == ''):
+        network_uuid=create_network(server_client, nic_count, network_type, cluster_uuid, vdc_uuid)
+        print("Created network " + network_uuid)
+        
     nic_data = server_client.factory.create('nic')
     nic_data.resourceType = 'NIC'
     nic_data.clusterUUID = cluster_uuid    
@@ -81,6 +85,27 @@ def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     print nic_result_set
     print "++++++++++++++"
     return nic_uuid
+
+def create_network(server_client, net_count, network_type, cluster_uuid, vdc_uuid):
+    """ function to create a network """
+    net_data = server_client.factory.create('network')
+    net_data.resourceType = 'NETWORK'
+    net_data.clusterUUID = cluster_uuid    
+    net_data.networkUUID = network_uuid
+    net_data.vdcUUID     = vdc_uuid    
+    net_data.resourceName = "net" + str(net_count)
+    net_data.networkType = network_type  
+
+    print "Calling createNetwork:"
+    print net_data
+    
+    net_result_set = server_client.service.createNetwork(net_data)
+#    print "net results set"
+#    print net_result_set
+    net_uuid = net_result_set.itemUUID
+    print net_result_set
+    print "++++++++++++++"
+    return net_uuid
 
 
 def add_nic_to_server(server_client, server_uuid, nic_uuid, index):
