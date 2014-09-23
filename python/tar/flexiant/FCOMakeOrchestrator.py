@@ -13,9 +13,6 @@ from packages.user_auth import ini_auth
 from packages.vdc_ops import create_vdc
 from packages.vdc_ops import get_first_vdc_in_cluster
 from packages.image_ops import get_image_uuid
-# We have our own (amended) copy of this
-# from packages.server_ops import create_server
-from packages.server_ops import count_server
 from packages.server_ops import create_nic
 from packages.server_ops import add_nic_to_server
 from packages.server_ops import wait_for_install
@@ -23,26 +20,16 @@ from packages.server_ops import wait_for_server
 from packages.server_ops import change_server_status
 from packages.server_ops import get_server_state
 from packages.server_ops import get_server_data
-from packages.server_ops import add_ip
-from packages.resource_ops import list_resource_name
-from packages.resource_ops import list_resource_type
 from packages.resource_ops import list_resource
 from packages.resource_ops import wait_for_resource
-# from packages.transaction_ops import list_unit_transactions
 
 
 import config
 import argparse
 
-# import library for SSH
-# import pysftp
-
 # import datetime for filename gen
 import datetime
 import time
-
-# import configParser to read setup.ini file
-# from ConfigParser import SafeConfigParser
 
 # you can change INFO to DEBUG for (a lot) more information)
 import logging
@@ -399,11 +386,12 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, s
     print "create_nic returned nic_uuid: " + nic_uuid
     wait_for_resource(res_client=auth_client, res_uuid=nic_uuid, state='ACTIVE', res_type='NIC')
     print "nic uuid: " + nic_uuid
-#    add_ip(server_client=auth_client, nic_uuid=nic_uuid)
+
     add_nic_to_server(server_client=auth_client, server_uuid=server_uuid, nic_uuid=nic_uuid, index='1')
     time.sleep(30)  # Give nic time to add
     server_resultset = list_resource(res_client=auth_client,
     res_uuid=server_uuid, res_type='SERVER')
+
 #    print server_resultset
     server_uuid = server_resultset.list[0].resourceUUID
     server_pw = server_resultset.list[0].initialPassword
