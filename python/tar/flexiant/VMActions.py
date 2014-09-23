@@ -2,10 +2,10 @@
 #
 
 from packages.user_auth import ini_auth
-from packages.server_ops import list_server
-from packages.resource_ops import list_resource_name
-from packages.resource_ops import list_resource_type
-from packages.resource_ops import list_resource
+#from packages.server_ops import list_server
+#from packages.resource_ops import list_resource_name
+#from packages.resource_ops import list_resource_type
+#from packages.resource_ops import list_resource
 from packages.server_ops import wait_for_server
 from packages.server_ops import get_server_state
 from packages.server_ops import change_server_status

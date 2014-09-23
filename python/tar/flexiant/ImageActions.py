@@ -3,8 +3,8 @@
 
 from packages.user_auth import ini_auth
 from packages.server_ops import list_server
-from packages.resource_ops import list_resource_name
-from packages.resource_ops import list_resource_type
+#from packages.resource_ops import list_resource_name
+#from packages.resource_ops import list_resource_type
 from packages.resource_ops import list_resource
 
 # import datetime for filename gen
@@ -30,24 +30,24 @@ def setup():
     return auth_client
 
 
-def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
-    config.get_config("")
-
-    config.CUST_UUID = customerUUID
-    config.USER_LOGIN = customerUsername
-    config.USER_PASSWORD = customerPassword
-    config.HOST_NAME = endpoint
-    # config.NETWORK_TYPE  = networkType
-
-    auth_client = setup()
-    server_state = get_server_state(auth_client, server_uuid)
-    
-    if (server_state != 'RUNNING'):
-        ret = wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-        if (ret != 0):
-            raise Exception("Server did not get to RUNNING state")
-
-    return server_state
+#def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
+#    config.get_config("")
+#
+#    config.CUST_UUID = customerUUID
+#    config.USER_LOGIN = customerUsername
+#    config.USER_PASSWORD = customerPassword
+#    config.HOST_NAME = endpoint
+#    # config.NETWORK_TYPE  = networkType
+#
+#    auth_client = setup()
+#    server_state = get_server_state(auth_client, server_uuid)
+#    
+#    if (server_state != 'RUNNING'):
+#        ret = wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
+#        if (ret != 0):
+#            raise Exception("Server did not get to RUNNING state")
+#
+#    return server_state
 
 def image_disk(auth_client, server_uuid, default_user, diskIndex):
     # Details of the server
@@ -117,7 +117,7 @@ if __name__ == "__main__":
                             help="Default user to assign to the image")             
     
     parser.add_argument('--action', dest='actionRequested', nargs='*',
-                            help="WHat to do")                            
+                            help="Which action to perform")                            
 
     cmdargs = parser.parse_args()
 

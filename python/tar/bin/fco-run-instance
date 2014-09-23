@@ -64,7 +64,7 @@ class MainProgram(FlexiantCommand):
             'image.id': self.options.imageUUID,
             cn + '.cpu': self.options.cpu,
             cn + '.ram': self.options.ram,
-            'extra.disk.volatile': '',
+            'extra.disk.volatile': self.options.diskSize,
             'network': self.options.networkType
         })
 

@@ -20,9 +20,12 @@ package com.sixsq.slipstream.connector.flexiant;
  * -=================================================================-
  */
 
+
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -33,18 +36,22 @@ import com.sixsq.slipstream.credentials.Credentials;
 import com.sixsq.slipstream.exceptions.ConfigurationException;
 import com.sixsq.slipstream.exceptions.InvalidElementException;
 import com.sixsq.slipstream.exceptions.ProcessException;
+import com.sixsq.slipstream.exceptions.NotFoundException;
+import com.sixsq.slipstream.exceptions.AbortException;
 import com.sixsq.slipstream.exceptions.ServerExecutionEnginePluginException;
 import com.sixsq.slipstream.exceptions.SlipStreamClientException;
 import com.sixsq.slipstream.exceptions.SlipStreamException;
 import com.sixsq.slipstream.exceptions.SlipStreamInternalException;
 import com.sixsq.slipstream.exceptions.ValidationException;
 import com.sixsq.slipstream.persistence.DeploymentModule;
+import com.sixsq.slipstream.persistence.ExtraDisk;
 import com.sixsq.slipstream.persistence.ImageModule;
 import com.sixsq.slipstream.persistence.Module;
 import com.sixsq.slipstream.persistence.ModuleCategory;
 import com.sixsq.slipstream.persistence.ModuleParameter;
 import com.sixsq.slipstream.persistence.Node;
 import com.sixsq.slipstream.persistence.Run;
+import com.sixsq.slipstream.persistence.RunType;
 import com.sixsq.slipstream.persistence.ServiceConfigurationParameter;
 import com.sixsq.slipstream.persistence.User;
 import com.sixsq.slipstream.persistence.UserParameter;
@@ -61,7 +68,8 @@ public class FCOConnector extends CliConnectorBase {
 	private final static Logger log = Logger.getLogger(FCOConnector.class.getName());
 
 	private final static String INSTALL_PATH = "/opt/slipstream/connectors/bin";
-
+	protected static final List<String> EXTRADISK_NAMES = Arrays
+			.asList(new String[] { "volatile", "persistent"});
 	/**
 	 * Python module with the corresponding client cloud connector. This should
 	 * be set as CLOUDCONNECTOR_PYTHON_MODULENAME environment variable when
@@ -471,7 +479,7 @@ public class FCOConnector extends CliConnectorBase {
 	}
 
 	private String getRunInstanceCommand(Run run, User user)
-			throws InvalidElementException, ValidationException,
+			throws InvalidElementException, ValidationException, AbortException, 
 			SlipStreamClientException, IOException, ConfigurationException,
 			ServerExecutionEnginePluginException {
 
@@ -485,16 +493,51 @@ public class FCOConnector extends CliConnectorBase {
 		String cpuCount = null;
 		ImageModule image = null;
 
-//		String extraDisksCommand = getExtraDisksCommand(run);
-
 		log.info("Some Parameter Values:\n");
 		log.info("Mod Cat: " + run.getCategory());
+		
+		String extraDiskName = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + "volatile";
+		String extraDiskSize = "";
+		try{
+			extraDiskSize = run.getRuntimeParameterValue(extraDiskName);
+		}
+		catch (Exception e){
+			try{
+				log.info("Failed getting parameter as " + extraDiskName);
+				String param2 = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + ".volatile";
+				extraDiskSize = run.getRuntimeParameterValue(param2);
+				log.info("Got parameter of value " + extraDiskSize + " using key " + param2);
+			}
+			catch (Exception e2){
+				
+			}
+		}
+
+		// Disk Size must be one of the standard sizes 
+		String validStandardSizes="20, 50, 100, 150, 250, 500, 750,";
+		if (!(extraDiskSize.equals("") || 
+			validStandardSizes.contains(extraDiskSize + ",") ||
+			extraDiskSize.equals("1000"))){
+			throw new ValidationException("Extra volatile disk size must be one of "
+					  + validStandardSizes + " or 1000");
+		}
+		
 		if (run.getCategory() == ModuleCategory.Image){
 			image = ImageModule.load(run.getModuleResourceUrl());
 			ramMb = getRam(image);
 			cpuCount = getCpu(image);
-			log.info("RAM from image is: " + ramMb);
-			log.info("CPU from image is: " + cpuCount);
+//			diskList = getExtraDisks();
+//			if (diskList != null && diskList.get(0) != null){
+//				diskSize = diskList.get(0).getSize();
+//			}
+//			else{
+//				diskSize = 100;
+//			}
+
+			log.info("RAM from image is : " + ramMb);
+			log.info("CPU from image is : " + cpuCount);
+			log.info("Extra Disk Size is: " + extraDiskSize);
+			log.info("Extra Disk Name is: " + extraDiskName);			
 		}
 		else if (run.getCategory() == ModuleCategory.Deployment){
 			Module module = run.getModule();
@@ -506,10 +549,11 @@ public class FCOConnector extends CliConnectorBase {
             	cpuCount = getCpu(image);
             	log.info("RAM from Deployment image is: " + ramMb);
             	log.info("CPU from Deployment image is: " + cpuCount);
-
+            	
             }
 		}
 
+		
 		// Path needs to match that in python/rpm/pom.xml
 		return INSTALL_PATH + "/fco-run-instance "
 				+ getRequiredParams(user)
@@ -521,13 +565,13 @@ public class FCOConnector extends CliConnectorBase {
 				//+ " -p "
 				+ " --context " + context
 				+ " --vm-name " + vmName + ":" + run.getName()
-				+ " --disk-size " + "50"
+				+ " --disk-size " + extraDiskSize
 				+ " --ram " + ramMb
 				+ " --cpu " + cpuCount
 //				+  + extraDisksCommand
 				;
 	}
-
+	
 	protected void validateUserParams(User user) throws ValidationException {
 		String errorMessageLastPart = getErrorMessageLastPart(user);
 

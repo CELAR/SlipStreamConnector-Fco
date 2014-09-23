@@ -46,7 +46,7 @@ import time
 
 # you can change INFO to DEBUG for (a lot) more information)
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logging.getLogger('suds.client').setLevel(logging.INFO)
 logging.getLogger('suds.transport').setLevel(logging.INFO)
 logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
@@ -264,18 +264,18 @@ def create_disk(server_client, prod_offer, disk_size, disk_name, vdc_uuid):
     print("===========")
     return disk_uuid
 
-def add_resource_key(auth_client, server_uuid, key_name, key_value, key_type, key_weight):
-    print ("add_resource_key for server " + server_uuid + ": " + key_name + ":" + key_value)
-    res_key = auth_client.factory.create('resourceKey')
-    res_key.name = key_name
-    res_key.type = key_type
-    res_key.value = key_value
-    res_key.weight = key_weight
-    ret_val = auth_client.service.addKey(server_uuid, res_key)
-    print "add_resource_key Return Value for server " + server_uuid + ": "
-    print ret_val
-    print "=========================================================="
-    return ret_val
+# def add_resource_key(auth_client, server_uuid, key_name, key_value, key_type, key_weight):
+#     print ("add_resource_key for server " + server_uuid + ": " + key_name + ":" + key_value)
+#     res_key = auth_client.factory.create('resourceKey')
+#     res_key.name = key_name
+#     res_key.type = key_type
+#     res_key.value = key_value
+#     res_key.weight = key_weight
+#     ret_val = auth_client.service.addKey(server_uuid, res_key)
+#     print "add_resource_key Return Value for server " + server_uuid + ": "
+#     print ret_val
+#     print "=========================================================="
+#     return ret_val
 
 
 # Modified version of the one in server_ops
@@ -426,45 +426,44 @@ def start_server(auth_client, server_data):
     return server_data
 
 
-def stop_server(auth_client, server_data):
-    """Function to stop server, uuid provided in server data"""
-    server_uuid = server_data[0]
-    change_server_status(server_client=auth_client, server_uuid=server_uuid, state='STOPPED')
-    wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-    server_state = get_server_state(auth_client, server_uuid)
-    return server_state
+# def stop_server(auth_client, server_data):
+#     """Function to stop server, uuid provided in server data"""
+#     server_uuid = server_data[0]
+#     change_server_status(server_client=auth_client, server_uuid=server_uuid, state='STOPPED')
+#     wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
+#     server_state = get_server_state(auth_client, server_uuid)
+#     return server_state
 
 
-def upload_file(server_data):
-    """Function to log into server and download file"""
-    server_uuid = server_data[0]
-    server_pw = server_data[1]
-    server_user = server_data[2]
-    server_ip = server_data[3]
-    srv = pysftp.Connection(username=server_user, password=server_pw, host=server_ip)
-    ts = time.time()
-    tstamp1 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    print "Start file transfer: " + tstamp1
-    srv.put(LOCAL_FILE)
-    srv.close
-    ts = time.time()
-    tstamp2 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    print "Complete file transfer: " + tstamp2
+#def upload_file(server_data):
+#    """Function to log into server and download file"""
+#    server_uuid = server_data[0]
+#    server_pw = server_data[1]
+#    server_user = server_data[2]
+#    server_ip = server_data[3]
+#    srv = pysftp.Connection(username=server_user, password=server_pw, host=server_ip)
+#    ts = time.time()
+#   tstamp1 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+#    print "Start file transfer: " + tstamp1
+#    srv.put(LOCAL_FILE)
+#    srv.close
+#    ts = time.time()
+#    tstamp2 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+#    print "Complete file transfer: " + tstamp2
 
 
-def assert_billing(auth_client):
-    """Function to check the billing for the downloaded files."""
-    billing_results = list_unit_transactions(auth_client)
-    print billing_results
-    return billing_results
+#def assert_billing(auth_client):
+#    """Function to check the billing for the downloaded files."""
+#    billing_results = list_unit_transactions(auth_client)
+#    print billing_results
+#    return billing_results
 
 def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoint, networkType,
-           diskSize, ramAmount, cpuCount, public_key, isVerbose=False, contextScript=None):
+           extra_disk_size, ramAmount, cpuCount, public_key, isVerbose=False, contextScript=None):
     """Main Function"""
 
     # Actually just defines the global variables now (since all config bits are passed on the command line)
     config.get_config("")
-    print("MakeVM: publicKey=" + public_key)
     config.CUST_UUID = customerUUID
     config.USER_LOGIN = customerUsername
     config.USER_PASSWORD = customerPassword
@@ -474,20 +473,23 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     # Does this need to be parameterised, or picked up by some other means ?
     config.PROD_OFFER = 'Generic Disk'
 
-    print("MakeVM() args:\n")
-    print(config.CUST_UUID)
-    print(config.USER_LOGIN)
-    print(config.USER_PASSWORD)
-    print(config.HOST_NAME)
-    print(config.NETWORK_TYPE)
-    print("Memory (ramAmount):" + ramAmount)
-    print("NumCPU (cpuCount):" + cpuCount)
-    print("=-=-=-=-=-=-\n")
-    # See what SlipStream is passing us by way of environment variables
-    print("SlipStream environment:\n")
-    for param in os.environ.keys():
-        print "%20s %s" % (param, os.environ[param])
-    print("=-=-=-=-=-=-\n")
+    if (isVerbose):
+        print("MakeVM() args:\n")
+        print(config.CUST_UUID)
+        print(config.USER_LOGIN)
+        print(config.USER_PASSWORD)
+        print(config.HOST_NAME)
+        print(config.NETWORK_TYPE)
+        print("MakeVM: publicKey=" + public_key)
+        print("Memory (ramAmount):" + ramAmount)
+        print("NumCPU (cpuCount):" + cpuCount)
+        print("extra_disk_size: " + str(extra_disk_size))
+        print("=-=-=-=-=-=-\n")
+        # See what SlipStream is passing us by way of environment variables
+        print("SlipStream environment:\n")
+        for param in os.environ.keys():
+            print "%20s %s" % (param, os.environ[param])
+        print("=-=-=-=-=-=-\n")
    
     auth_client = setup_test()
 
@@ -496,34 +498,34 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
 
     img_ret = list_image(auth_client, image_uuid)
     vdc_uuid_for_image = img_ret.list[0].vdcUUID
-    print("vdc_uuid_for_image is " + vdc_uuid_for_image)
+    if (isVerbose):
+        print("vdc_uuid_for_image is " + vdc_uuid_for_image)
     
     cluster_uuid_for_image = img_ret.list[0].clusterUUID
-    print("cluster_uuid_for_image is " + cluster_uuid_for_image)
+    if (isVerbose):
+        print("cluster_uuid_for_image is " + cluster_uuid_for_image)
 
     customer_vdc_uuid = get_first_vdc_in_cluster(auth_client, cluster_uuid_for_image)
-    print("The VDC to use is: " + customer_vdc_uuid)
+    if (isVerbose):
+        print("The VDC to use is: " + customer_vdc_uuid)
     
-    # TODO Might need to setup VDC if user doesn't have one
-    if (customer_vdc_uuid == '' or
-        customer_vdc_uuid == '7a7493ef-3dc5-3681-8342-e9d56e99fac2'):
+    # Setup VDC in this cluster if user doesn't have one
+    if (customer_vdc_uuid == ''):
         vdc_uuid = create_vdc_in_cluster(auth_client, cluster_uuid_for_image)
-        print("VDC we created is " + vdc_uuid)
-    
+        if (isVerbose):
+            print("VDC we created is " + vdc_uuid)
+        customer_vdc_uuid = vdc_uuid
+        
     product_offer = 'Standard Server'
-    current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S") 
     server_name = "Server " + current_time
-    disk_name = "Disk 1: " + current_time
-
-    # Generic Disk is what the product is called in v4. SD1 is still on v3.1.x, so we
-    # need to use 'Standard Disk'
-    # disk_uuid = create_disk(auth_client,'Generic Disk','20',disk_name,vdc_uuid)
-
-    # Don't actually need to create a disk, as the image gets cloned and a new disk
-    # is created from that, but the fact the disk we create here exists is relied on
-    # by lower level code, so until that is cleaned up, leave this in place
-    disk_uuid = create_disk(auth_client,'Standard Disk','20',disk_name, customer_vdc_uuid)
-
+    disk_product_offer = "Standard Disk"
+     
+    # Create boot disk 
+    disk_name = server_name + " - Boot Disk"
+    boot_disk_size = img_ret.list[0].size
+    disk_uuid = create_disk(auth_client, disk_product_offer, boot_disk_size, disk_name, customer_vdc_uuid)
+    
     server_data = build_server(auth_client=auth_client, customer_uuid=customerUUID, image_uuid=image_uuid,
                                vdc_uuid=customer_vdc_uuid, prod_offer=product_offer, server_name=server_name, 
                                ram_amount=ramAmount, cpu_count=cpuCount,
@@ -532,6 +534,13 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
                                cluster_uuid=cluster_uuid_for_image,
                                public_key=public_key,
                                context_script=contextScript)
+
+    # Create the additional disk (if any) and attach it to the server.   
+    disk_name = "Disk " + current_time + " #2"
+    if (extra_disk_size > 0):
+        print("Creating additional volatile disk")
+        extra_disk_uuid = create_disk(auth_client,'Standard Disk', extra_disk_size, disk_name, customer_vdc_uuid)
+        auth_client.service.attachDisk(serverUUID=server_data[0], diskUUID=extra_disk_uuid)
 
     if (isVerbose):
         print "Return from build_server() is:"
@@ -546,10 +555,11 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     # Server UUID and IP:6885959f-c53e-3b7d-aac2-4ff4b4327620:AAb5XUn6niUmQih9:ubuntu:109.231.122.249
     #
     # print "Server UUID and IP:"  +  ':'.join(server_data)
-    print("server_data[0]=" + server_data[0]);
-    print("server_data[1]=" + server_data[1]);
-    print("server_data[2]=" + server_data[2]);
-    print("server_data[3]=" + server_data[3]);
+    if (isVerbose):
+        print("server_data[0]=" + server_data[0]);
+        print("server_data[1]=" + server_data[1]);
+        print("server_data[2]=" + server_data[2]);
+        print("server_data[3]=" + server_data[3]);
 
     # ret = "Server UUID and IP:"  +  ':'.join(server_data)
 

@@ -75,6 +75,9 @@ class FlexiantClientCloud(BaseCloudConnector):
 
         public_key = user_info.get_public_keys()
 
+        extra_disk_size = int(node_instance.get_volatile_extra_disk_size() or 0)
+        self._print_detail("extra_disk_size: " + str(extra_disk_size))
+
         try:
             ret = MakeVM(
                 image_id,
@@ -83,7 +86,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 user_info.get_cloud_password(),
                 user_info.get_cloud_endpoint(),
                 ip_type,
-                20,
+                extra_disk_size,
                 ram,
                 cpu,
                 public_key,
