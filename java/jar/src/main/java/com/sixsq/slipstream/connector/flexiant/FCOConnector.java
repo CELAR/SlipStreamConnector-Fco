@@ -514,11 +514,16 @@ public class FCOConnector extends CliConnectorBase {
 
 		// Disk Size must be one of the standard sizes 
 		String validStandardSizes="20, 50, 100, 150, 250, 500, 750,";
-		if (!(extraDiskSize.equals("") || 
-			validStandardSizes.contains(extraDiskSize + ",") ||
-			extraDiskSize.equals("1000"))){
-			throw new ValidationException("Extra volatile disk size must be one of "
-					  + validStandardSizes + " or 1000");
+		if (extraDiskSize != null){
+			if (!(extraDiskSize.equals("") || 
+					validStandardSizes.contains(extraDiskSize + ",") ||
+					extraDiskSize.equals("1000"))){
+				throw new ValidationException("Extra volatile disk size must be one of "
+						+ validStandardSizes + " or 1000");
+			}
+		}
+		else{
+			extraDiskSize = "0";
 		}
 		
 		if (run.getCategory() == ModuleCategory.Image){
