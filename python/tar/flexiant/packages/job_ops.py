@@ -14,25 +14,6 @@ logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
 logging.getLogger('suds.wsdl').setLevel(logging.INFO)
 
 
-def get_job(job_client, job_uuid):
-    """ show data for specific job """
-    # setup search filter object
-    sf = job_client.factory.create('searchFilter')
-    #create filter conditions object
-    fc = job_client.factory.create('filterConditions')
-    # set filter condition values
-    fc.condition = 'IS_EQUAL_TO'
-    fc.field = 'resourceUUID'
-    fc.value = job_uuid
-    sf.filterConditions.append(fc)
-#    print sf
-    # call to listBillingEntities service with search filter
-    job_data = job_client.service.listResources(searchFilter=sf,
-                                                resourceType="JOB")
-#    print job_data
-    return job_data
-
-
 def wait_for_job(job_client, job_uuid, status, time_limit):
     """ check resource has reached state """
     sf = job_client.factory.create('searchFilter')
