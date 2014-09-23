@@ -380,7 +380,8 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, prod_offer, s
                                 disk_uuid=disk_uuid, public_key=public_key,
                                 context_script=context_script)
     wait_for_install(server_client=auth_client, server_uuid=server_uuid)
-    print "Calling create_nic for network " + config.NETWORK_TYPE
+    #print "Calling create_nic for network " + config.NETWORK_TYPE
+    print "Calling create_nic for network " + networkType
     nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=networkType, 
                           cluster_uuid=cluster_uuid, vdc_uuid=vdc_uuid)
     print "create_nic returned nic_uuid: " + nic_uuid
@@ -552,16 +553,18 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     # ret = "Server UUID and IP:"  +  ':'.join(server_data)
 
     # bodge to remove the (unused) disk we seem to have to have created
-    print "Cleaning up disk" + disk_uuid
-    auth_client.service.deleteResource(resourceUUID=disk_uuid, cascade=False)
+    #print "Cleaning up disk" + disk_uuid
+    #auth_client.service.deleteResource(resourceUUID=disk_uuid, cascade=False)
 
     ret = dict(server_uuid=server_data[0],
              ip=server_data[3],
              password=server_data[1],
              login=server_data[2]
             )
-
-    print ret
+    
+    if (isVerbose):
+        print ret
+    
     return ret
 
 if __name__ == "__main__":

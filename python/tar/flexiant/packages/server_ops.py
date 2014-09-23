@@ -93,7 +93,7 @@ def create_network(server_client, net_count, network_type, cluster_uuid, vdc_uui
     net_data.clusterUUID = cluster_uuid    
     net_data.vdcUUID     = vdc_uuid    
     net_data.resourceName = "net" + str(net_count)
-    net_data.networkType = network_type  
+    net_data.networkType = network_type.upper()
 
     print "Calling createNetwork:"
     print net_data
@@ -475,59 +475,6 @@ def get_server_data(server_client, server_uuid):
     #extract number of Servers from result set
 #    print server_result_set
     return server_result_set
-
-
-def create_server_returnall(server_client, prod_offer, image_uuid, server_name):
-    """ Create specific Server for customer - return full dataset """
-    # Get product offer uuid
-    # setup search filter object
-    sf1 = server_client.factory.create('searchFilter')
-    #create filter conditions object
-    fc1 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'resourceState'
-    fc1.value = 'ACTIVE'
-#    print fc1
-    sf1.filterConditions.append(fc1)
-    fc2 = server_client.factory.create('filterConditions')
-#    print fc
-    # set filter condition values
-    fc2.condition = 'IS_EQUAL_TO'
-    fc2.field = 'description'
-    fc2.value = prod_offer
-    sf1.filterConditions.append(fc2)
-#    print sf1
-    prod_offer_result_set = server_client.service.listResources(searchFilter=sf1, resourceType='PRODUCTOFFER')
-    prod_offer_uuid = prod_offer_result_set.list[0].resourceUUID
-
-    #create NIC
-#    nic_count = 1
-#    nic_job_data = create_nic_retall(server_client, nic_count)
-
-    # Get cluster uuid
-    cluster_result_set = server_client.service.listResources(resourceType='CLUSTER')
-    cluster_uuid = cluster_result_set.list[0].resourceUUID
-    # Get VDC uuid
-    vdc_uuid = get_vdc_uuid(server_client)
-    # Create server
-    server_data = server_client.factory.create('server')
-    server_data.resourceName = server_name
-    server_data.productOfferUUID = prod_offer_uuid
-    server_data.imageUUID = image_uuid
-    server_data.clusterUUID = cluster_uuid
-    server_data.vdcUUID = vdc_uuid
- #   nic_data = server_client.factory.create('nic')
- #   nic_data.resourceUUID = nic_job_data.resourceUUID
- #   nic_data.resourceType = nic_job_data.resourceType
- #   server_data.nics.append(nic_data)
-    print "server data in create_server_returnall: "
-    print server_data
-    server_retval = server_client.service.createServer(server_data)
-    print "create_server_returnall done at: "  +   strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    print "server return values in create_server_returnall: "
-    print server_retval
-    return server_retval
 
 def list_server(auth_client, server_uuid):
     sf = auth_client.factory.create('searchFilter')

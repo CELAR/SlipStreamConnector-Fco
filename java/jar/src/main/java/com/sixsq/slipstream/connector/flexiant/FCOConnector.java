@@ -68,8 +68,7 @@ public class FCOConnector extends CliConnectorBase {
 	private final static Logger log = Logger.getLogger(FCOConnector.class.getName());
 
 	private final static String INSTALL_PATH = "/opt/slipstream/connectors/bin";
-	protected static final List<String> EXTRADISK_NAMES = Arrays
-			.asList(new String[] { "volatile", "persistent"});
+
 	/**
 	 * Python module with the corresponding client cloud connector. This should
 	 * be set as CLOUDCONNECTOR_PYTHON_MODULENAME environment variable when
