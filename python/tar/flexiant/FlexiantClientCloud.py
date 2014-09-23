@@ -75,7 +75,12 @@ class FlexiantClientCloud(BaseCloudConnector):
 
         public_key = user_info.get_public_keys()
 
-        extra_disk_size = int(node_instance.get_volatile_extra_disk_size() or 0)
+        extra_disk_str = node_instance.get_volatile_extra_disk_size()
+        try:
+            extra_disk_size = int(extra_disk_str)
+        except:
+            extra_disk_size = 0
+            
         self._print_detail("extra_disk_size: " + str(extra_disk_size))
 
         try:
