@@ -35,11 +35,14 @@ def get_nic_uuid(auth_client, netTypeSought, cluster_uuid):
     """ function to find a nic of the desired type """
     sf2 = auth_client.factory.create('searchFilter')
     fc3 = auth_client.factory.create('filterConditions')
+    ql =  auth_client.factory.create('queryLimit')
     fc3.condition = 'IS_EQUAL_TO'
     fc3.field = 'resourceState'
     fc3.value = 'ACTIVE'
     sf2.filterConditions.append(fc3)
-    network_result_set = auth_client.service.listResources(searchFilter = sf2, resourceType = "NETWORK")
+    ql.maxRecords = 200
+    ql.loadChildren = False    # We don't need all the details
+    network_result_set = auth_client.service.listResources(searchFilter = sf2, queryLimit=ql, resourceType = "NETWORK")
 
     print network_result_set
     ourNet = ""
