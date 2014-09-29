@@ -496,7 +496,7 @@ public class FCOConnector extends CliConnectorBase {
 		log.info("Mod Cat: " + run.getCategory());
 		
 		String extraDiskName = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + "volatile";
-		String extraDiskSize = "";
+		String extraDiskSize = "0";
 		try{
 			extraDiskSize = run.getRuntimeParameterValue(extraDiskName);
 		}
@@ -508,14 +508,14 @@ public class FCOConnector extends CliConnectorBase {
 				log.info("Got parameter of value " + extraDiskSize + " using key " + param2);
 			}
 			catch (Exception e2){
-				
+				extraDiskSize = "0";
 			}
 		}
 
 		// Disk Size must be one of the standard sizes 
 		String validStandardSizes="20, 50, 100, 150, 250, 500, 750,";
 		if (extraDiskSize != null){
-			if (!(extraDiskSize.equals("") || 
+			if (!(extraDiskSize.equals("0") || 
 					validStandardSizes.contains(extraDiskSize + ",") ||
 					extraDiskSize.equals("1000"))){
 				throw new ValidationException("Extra volatile disk size must be one of "
@@ -530,14 +530,6 @@ public class FCOConnector extends CliConnectorBase {
 			image = ImageModule.load(run.getModuleResourceUrl());
 			ramMb = getRam(image);
 			cpuCount = getCpu(image);
-//			diskList = getExtraDisks();
-//			if (diskList != null && diskList.get(0) != null){
-//				diskSize = diskList.get(0).getSize();
-//			}
-//			else{
-//				diskSize = 100;
-//			}
-
 			log.info("RAM from image is : " + ramMb);
 			log.info("CPU from image is : " + cpuCount);
 			log.info("Extra Disk Size is: " + extraDiskSize);
@@ -553,11 +545,9 @@ public class FCOConnector extends CliConnectorBase {
             	cpuCount = getCpu(image);
             	log.info("RAM from Deployment image is: " + ramMb);
             	log.info("CPU from Deployment image is: " + cpuCount);
-            	
             }
 		}
 
-		
 		// Path needs to match that in python/rpm/pom.xml
 		return INSTALL_PATH + "/fco-run-instance "
 				+ getRequiredParams(user)
@@ -566,13 +556,11 @@ public class FCOConnector extends CliConnectorBase {
 //				+ " --quiet "
 				+ " --public-key '" + publicSshKey + "'"
 //  			+ " -u " + getKey(user)
-				//+ " -p "
 				+ " --context " + context
 				+ " --vm-name " + vmName + ":" + run.getName()
 				+ " --disk-size " + extraDiskSize
 				+ " --ram " + ramMb
 				+ " --cpu " + cpuCount
-//				+  + extraDisksCommand
 				;
 	}
 	
