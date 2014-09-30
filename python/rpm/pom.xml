@@ -130,7 +130,7 @@
                                 <include>fco-*</include>
                                 <include>flex*</include>
                                 <include>list_vm.py</include>
-                                <include>slipstream.client.conf</include>
+                                <!-- include>slipstream.client.conf</include -->
                               </includes>
                             </source>
                           </sources>
