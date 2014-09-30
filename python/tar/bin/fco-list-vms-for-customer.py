@@ -2,28 +2,10 @@
 # 
 # List VMs owned by the specified customer, and their state
 
-import os
-
 from flexiant.packages.user_auth import ini_auth
 
 import flexiant.config as config
 import argparse
-
-
-#import datetime for filename gen
-import datetime
-import time
-
-# import configParser to read setup.ini file
-#from ConfigParser import SafeConfigParser
-
-#you can change INFO to DEBUG for (a lot) more information)
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('suds.client').setLevel(logging.INFO)
-logging.getLogger('suds.transport').setLevel(logging.INFO)
-logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
-logging.getLogger('suds.wsdl').setLevel(logging.INFO)
 
 
 def setup_test():
@@ -34,13 +16,15 @@ def setup_test():
 def list_customer_servers(auth_client, customer_uuid):
     sf = auth_client.factory.create('searchFilter')
     fc1 = auth_client.factory.create('filterConditions')
+    qf = auth_client.factory.create('queryLimit')
     fc1.condition = 'IS_EQUAL_TO'
-    #fc1.field = 'resourceUUID'   
-    #fc1.value = server_uuid
     fc1.field = 'customerUUID'   
     fc1.value = customer_uuid    
     sf.filterConditions.append(fc1)
-    server_result_set = auth_client.service.listResources(searchFilter = sf,resourceType = 'SERVER')
+    qf.loadChildren = False
+    
+    server_result_set = auth_client.service.listResources(searchFilter = sf, queryLimit=qf, resourceType = 'SERVER')
+
     #extract number of Servers from result set
     if (server_result_set.totalCount == 0):
       msg = "ERROR: No servers found for customer with UUID '" + customer_uuid + "'"
@@ -61,9 +45,6 @@ def list_customer_servers(auth_client, customer_uuid):
         
 def main():
     """Main Function"""
-
-    # define global variables
-
 
 
     # Actually just defines the global variables now (since all config bits are passed on the command line)
@@ -100,14 +81,6 @@ def main():
         print (cmdargs)
     
         
-    # See what SlipStream is passing us by way of environment variables
-    #for param in os.environ.keys():
-    #    print "%20s %s" % (param,os.environ[param])    
-    
-
-    # ignore setup.ini as we get all the args via the command line
-
-    
     auth_client = setup_test()        
 
     list_customer_servers(auth_client=auth_client, customer_uuid=config.CUST_UUID)
