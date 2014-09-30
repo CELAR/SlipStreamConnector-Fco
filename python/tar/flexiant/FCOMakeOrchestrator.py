@@ -3,6 +3,8 @@
 
 import os
 import sys
+import socket
+import errno
 
 sys.path.insert(1, '.')
 
@@ -423,16 +425,54 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, server_po_uui
     server_data = [server_uuid, server_pw, server_user]
     return server_data
 
+def is_ssh_port_open(server_ip, max_wait):
+    cli=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ok=0
+    limit= max_wait / 2 # because we wait two seconds for each connection
+    while ok == 0 and limit > 0:
+        try:
+            s=socket.create_connection((server_ip,22),2)
+            s.close()
+            ok = 1
+            print(time.strftime("%Y-%m-%d %H:%M:%S %f") + " Connected\n")
+#        except socket.timeout, msg:
+#            print "zzzz:" + str(msg)
+            
+        except socket.error, msg:
+            limit = limit - 1
+            print time.strftime("%Y-%m-%d %H:%M:%S %f") + " fail: '" + str(msg[0]) + "'" #+ " " + msg[1]
+            # ECONNREFUSED is good, because it means the machine is likely on it's way up. Of course,
+            # that could be the permanent state of affairs, but we only care if the machine is booted.
+            if (str(msg[0]) == str(errno.ECONNREFUSED)):
+               ok = 1
+
+    print("SSH probe complete with " + str(limit) + " tries left (ok=" + str(ok) +")")
+
 def start_server(auth_client, server_data):
     """Function to start server, uuid in server_data"""
     server_uuid = server_data[0]
     server_state = get_server_state(auth_client, server_uuid)
     if server_state == 'STOPPED':
-        change_server_status(server_client=auth_client, server_uuid=server_uuid, state='RUNNING')
-        wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-        time.sleep(30)  # let server become fully active
+        rc = change_server_status(server_client=auth_client, server_uuid=server_uuid, state='RUNNING')
+        # change_server_status() waits on the server getting to the requested state, so we don't
+        # need to call wait_for_server() here. However, we do (1) need to check the status and (2)
+        # wait on the server actually being accessible (as opposed to having a RUNNING state in
+        # FCO, which really just means that the underlying kvm process has started).
+        #
+        # 1. Check rc (0 is good)
+        if (rc != 0):
+            raise CloudError("Failed to put server " + server_uuid + " in to running state")
+            
+
     server_resultset = get_server_data(server_client=auth_client, server_uuid=server_uuid)
     server_ip = server_resultset.list[0].nics[0].ipAddresses[0].ipAddress
+
+    # Step 2. Wait on it being accessible. It is possible that the server doesn't have ssh installed,
+    # or it is firewalled, so don't fail here if we can't connect, just carry on and let 
+    # the caller deal with any potential issue. The alternative is a hard-coded sleep, or 
+    # trying a ping (platform specific and/or root privs needed).
+    is_ssh_port_open(server_ip, 30)
+
     server_data.append(server_ip)
     return server_data
 
@@ -611,7 +651,6 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     return ret
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--image-id', dest='imageId', nargs='*',
                         help="The UUID of the Image")

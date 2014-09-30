@@ -149,7 +149,10 @@ def get_prod_offer_uuid(server_client, prod_offer_name):
     fc2.field = 'description'
     fc2.value = prod_offer_name
     sf1.filterConditions.append(fc2)
-#    print sf1
+
+    print("Search Filter for Product Offer " + prod_offer_name)
+    print(sf1)    
+                                    
     prod_offer_result_set = server_client.service.listResources(searchFilter = sf1, resourceType = "PRODUCTOFFER")
     prod_offer_uuid = prod_offer_result_set.list[0].resourceUUID
     return prod_offer_uuid
@@ -352,14 +355,14 @@ def wait_for_server(server_client, server_uuid, status):
 #    print server_created
     i = 0
 #    print "server created count:" + str(server_created.totalCount)
-    # currently waiting for 100 seconds (up to 10 loops of a 10 second sleep)
-    while (server_result.totalCount < 1) and (i <= 10):
+    while (server_result.totalCount < 1) and (i <= 24):
         print "in wait_for_server loop i = " + str(i) + ", count " + str(server_result.totalCount)
         i = i + 1
         # wait a while
-        time.sleep(10)
+        time.sleep(5)
         server_result = server_client.service.listResources(searchFilter = sf, resourceType = "SERVER")
 #        print "server created count:" + str(server_created.totalCount)
+    print("wait_for_server(): exit after " + str(i) + " tries")
     if server_result.totalCount == 1:
         return_val = 0
     else:
