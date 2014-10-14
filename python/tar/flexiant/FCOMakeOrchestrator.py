@@ -428,21 +428,24 @@ def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, server_po_uui
 def is_ssh_port_open(server_ip, max_wait):
     cli=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ok=0
-    limit= max_wait / 2 # because we wait two seconds for each connection
+    poll_interval = 5
+    limit= max_wait / poll_interval # number of times to retry (approximately)
     while ok == 0 and limit > 0:
         try:
-            s=socket.create_connection((server_ip,22),2)
+            s=socket.create_connection((server_ip,22),poll_interval)
             s.close()
             ok = 1
-            print(time.strftime("%Y-%m-%d %H:%M:%S %f") + " Connected\n")
+            print str(time.time()) + " Connected\n"
 #        except socket.timeout, msg:
 #            print "zzzz:" + str(msg)
             
         except socket.error, msg:
             limit = limit - 1
-            print time.strftime("%Y-%m-%d %H:%M:%S %f") + " fail: '" + str(msg[0]) + "'" #+ " " + msg[1]
+            print str(time.time()) + " fail: '" + str(msg[0]) + "'" #+ " " + msg[1]
             # ECONNREFUSED is good, because it means the machine is likely on it's way up. Of course,
-            # that could be the permanent state of affairs, but we only care if the machine is booted.
+            # that could be the permanent state of affairs, but we only care if the machine is booted 
+            # - by the time the real connection happens, ssh should be in a state where it can accept
+            # connections.
             if (str(msg[0]) == str(errno.ECONNREFUSED)):
                ok = 1
 
@@ -461,7 +464,7 @@ def start_server(auth_client, server_data):
         #
         # 1. Check rc (0 is good)
         if (rc != 0):
-            raise CloudError("Failed to put server " + server_uuid + " in to running state")
+            raise Exceptions.ExecutionException("Failed to put server " + server_uuid + " in to running state")
             
 
     server_resultset = get_server_data(server_client=auth_client, server_uuid=server_uuid)

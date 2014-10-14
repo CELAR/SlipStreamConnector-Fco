@@ -46,6 +46,13 @@ def get_nic_uuid(auth_client, netTypeSought, cluster_uuid):
 
     print network_result_set
     ourNet = ""
+
+    # SlipStream passes Public as a Network Type, but this is not what FCO knows as Public. See
+    # http://docs.flexiant.com/display/DOCS/SOAP+networkType - what we actually need is IP, because that's the only
+    # one of the two that gets the IP address assigned up front, and thus allows the rest of the code to continue
+    if netTypeSought.lower() == 'public':
+        netTypeSought = 'IP'
+   
     for l in range(0, network_result_set.totalCount):
         print "Network type is: "  + network_result_set.list[l].networkType + " " + network_result_set.list[l].resourceUUID + " in Cluster " + network_result_set.list[l].clusterUUID
         # Correct Cluster ?
@@ -54,9 +61,6 @@ def get_nic_uuid(auth_client, netTypeSought, cluster_uuid):
             # Exact match ?
             if network_result_set.list[l].networkType.lower() == netTypeSought.lower():
                 ourNet = network_result_set.list[l].resourceUUID
-            # If Network Type being sought is Public, IP is also a valid choice, if we haven't already seen a more exact match
-            if ourNet == "" and netTypeSought.lower() == 'public' and network_result_set.list[l].networkType.lower() == 'ip':
-                 ourNet = network_result_set.list[l].resourceUUID
 
     print "Will use: " + ourNet
     return ourNet
@@ -76,6 +80,11 @@ def create_nic(server_client, nic_count, network_type, cluster_uuid, vdc_uuid):
     nic_data.networkUUID = network_uuid
     nic_data.vdcUUID     = vdc_uuid    
     nic_data.resourceName = "nic" + str(nic_count)
+
+    # See comment in get_nic_uuid() for rationale
+    if network_type.lower() == 'public':
+        network_type= 'IP'
+
     nic_data.networkType = network_type  
 
     print "Calling createNetworkInterface:"
