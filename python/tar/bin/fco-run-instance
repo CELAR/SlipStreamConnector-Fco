@@ -59,7 +59,7 @@ class MainProgram(FlexiantCommand):
     def doWork(self):
         cn = FlexiantClientCloud.cloudName
         node_instance = NodeInstance({
-            'name': self.options.vmName,
+            NodeDecorator.NODE_INSTANCE_NAME_KEY: self.options.vmName,
             NodeDecorator.CLOUDSERVICE_KEY: cn,
             'image.id': self.options.imageUUID,
             cn + '.cpu': self.options.cpu,
