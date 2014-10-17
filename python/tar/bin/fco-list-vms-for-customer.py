@@ -2,53 +2,79 @@
 # 
 # List VMs owned by the specified customer, and their state
 
-from flexiant.packages.user_auth import ini_auth
+import json
+import requests
 
-import flexiant.config as config
 import argparse
 
 
-def setup_test():
-    """Function to set up api session, import credentials etc."""
-    auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
-    return auth_client
+# We can turn on debugging by explicitly importing http_client and setting it's debug level
+#try:
+#    import http.client as http_client
+#except ImportError:
+#    # Python 2
+#    import httplib as http_client
+#http_client.HTTPConnection.debuglevel = 1
 
-def list_customer_servers(auth_client, customer_uuid):
-    sf = auth_client.factory.create('searchFilter')
-    fc1 = auth_client.factory.create('filterConditions')
-    qf = auth_client.factory.create('queryLimit')
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'customerUUID'   
-    fc1.value = customer_uuid    
-    sf.filterConditions.append(fc1)
-    qf.loadChildren = False
+
+def getToken(endpoint, username, cust_uuid, password):
+    tokenURL = "%srest/user/current/authentication" % endpoint
+    apiUserName = username + "/" + cust_uuid
+    tokenPayload = {'automaticallyRenew':'True'}
+    tokenRequest = requests.get(tokenURL,
+                                params=tokenPayload,
+                                auth=(apiUserName, password))
+                                
+    token = tokenRequest.content
+    tokenObj = json.loads(token)
+    return tokenObj['publicToken']
+
+
+def list_servers(endpoint, token, password, username, cust_uuid):
+     
+    listURL = endpoint + "rest/user/current/resources/server/list"
     
-    server_result_set = auth_client.service.listResources(searchFilter = sf, queryLimit=qf, resourceType = 'SERVER')
+    apiUserName = username + "/" + cust_uuid    
+        
+    false = False
+    # No point adding a FCO searchFilter since the user can only see their own VMs
+    queryLimit = {"from":0,
+                  "loadChildren":false,
+                  "maxRecords":200,
+                  "to":200
+                  } 
 
-    #extract number of Servers from result set
-    if (server_result_set.totalCount == 0):
-      msg = "ERROR: No servers found for customer with UUID '" + customer_uuid + "'"
-      return msg
+    payload= {"queryLimit":queryLimit
+            }
+    #print("payload=" + str(payload))
+    
+    payload_as_string = json.JSONEncoder().encode(payload);
+    #print(payload_as_string);
 
-    print "UUID                                  State"
-    for x in xrange(0, server_result_set.totalCount):
-        server_data = server_result_set.list[x]
-        #print("Server Data:")
-        #print(server_data)
-        server_uuid = server_data.resourceUUID
-        server_name = server_data.resourceName
-        server_state = server_data.status
-        #ip_address = server_data.nics[0].ipAddresses[0].ipAddress        
-        print "" + server_uuid + "  " + server_state
+    # Note we use data= and not params= here
+    # See: http://requests.readthedocs.org/en/v1.0.1/user/quickstart/
+    #
+    # Also, we need to set the content type, because if we don't the payload is just silently ignored
+    headers = {'content-type': 'application/json'}    
 
-    return
+    res = requests.get(listURL, data=payload_as_string, auth=(token,''), headers=headers)
+
+    # Status 200 is good
+    if (res.status_code == requests.codes.ok):
+      #print("Done")
+      response = json.loads(res.content)
+      #print "response=" + str(response)
+      return response
+      
+    # Something went wrong. Pick out the status code
+    
+    woops = "Error - HTTP status code: " + str(res.status_code)
+    raise RuntimeError(woops)
+#    return ""
+
         
 def main():
     """Main Function"""
-
-
-    # Actually just defines the global variables now (since all config bits are passed on the command line)
-    config.get_config("")    
     
     parser=argparse.ArgumentParser()
 
@@ -70,21 +96,24 @@ def main():
 
     cmdargs=parser.parse_args()
         
-    config.CUST_UUID     = cmdargs.customerUUID[0]
-    config.USER_LOGIN    = cmdargs.customerUsername[0] 
-    config.USER_PASSWORD = cmdargs.customerPassword[0]
-    config.HOST_NAME     = cmdargs.apiHost[0]
     isVerbose            = cmdargs.isVerbose
 
     # better late than never
-    if (isVerbose):
-        print (cmdargs)
-    
-        
-    auth_client = setup_test()        
+    #if (isVerbose):
+    #    print (cmdargs)
+       
+    apiToken = getToken(cmdargs.apiHost[0], 
+                        cmdargs.customerUsername[0], 
+                        cmdargs.customerUUID[0],
+                        cmdargs.customerPassword[0])
+                        
+    #print("apiToken = " + apiToken)    
+    response = list_servers(cmdargs.apiHost[0], apiToken, cmdargs.customerPassword[0], 
+                            cmdargs.customerUsername[0], cmdargs.customerUUID[0])
+    print "UUID                                  State"
+    for server in response['list']:
+        print server['resourceUUID'] + " " + server['status']
 
-    list_customer_servers(auth_client=auth_client, customer_uuid=config.CUST_UUID)
-    
 if __name__ == "__main__":
     main()
 
