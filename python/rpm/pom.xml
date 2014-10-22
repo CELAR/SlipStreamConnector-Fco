@@ -96,6 +96,7 @@
 					  <require>python &gt;= 2.6</require>
 					  <require>slipstream-client</require>
 					  <require>python-suds</require>
+                                          <require>python-requests</require>
 					</requires>
 
 					<mappings>
