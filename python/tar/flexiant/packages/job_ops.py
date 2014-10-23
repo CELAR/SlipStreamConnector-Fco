@@ -35,6 +35,7 @@ def get_job(job_client, job_uuid):
 
 def wait_for_job(job_client, job_uuid, status, time_limit):
     """ check resource has reached state """
+    print("Begin wait_for_job on resource " + job_uuid + " reaching status " + status + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))
     sleep_time = 5
     loop_limit = (time_limit / sleep_time ) + 1
     sf = job_client.factory.create('searchFilter')
@@ -69,6 +70,7 @@ def wait_for_job(job_client, job_uuid, status, time_limit):
                                                       resourceType='JOB')
         #print chk_result                                              
 
+    print("End wait_for_job on resource " + job_uuid + " reaching status " + status + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))
     if chk_result.totalCount == 1:
         return_val = 0
     else:

@@ -293,6 +293,7 @@ def fetch_server(server_client, prod_offer, image_url, server_name, vdc_uuid,
 
 
 def wait_for_install(server_client, server_uuid):
+    print("Begin wait_for_install for server " + server_uuid + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))
     """ Check Server has completed creation """
     sf = server_client.factory.create('searchFilter')
     # debug print statement	
@@ -329,6 +330,7 @@ def wait_for_install(server_client, server_uuid):
         server_created = server_client.service.listResources(searchFilter = sf, resourceType = "SERVER")
 #        print "server created count:" + str(server_created.totalCount)
     print "wait_for_install - created count is: " + str(server_created.totalCount)
+    print("End wait_for_install for server " + server_uuid + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))    
     if server_created.totalCount == 1:
         return_val = 0
     else:
@@ -338,6 +340,7 @@ def wait_for_install(server_client, server_uuid):
 
 def wait_for_server(server_client, server_uuid, status):
     """ Check Server has completed creation """
+    print("Begin wait_for_server for server " + server_uuid + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))
     sf = server_client.factory.create('searchFilter')
     # debug print statement	
 #    print sf
@@ -372,6 +375,7 @@ def wait_for_server(server_client, server_uuid, status):
         server_result = server_client.service.listResources(searchFilter = sf, resourceType = "SERVER")
 #        print "server created count:" + str(server_created.totalCount)
     print("wait_for_server(): exit after " + str(i) + " tries")
+    print("End wait_for_server for server " + server_uuid + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))    
     if server_result.totalCount == 1:
         return_val = 0
     else:
