@@ -141,11 +141,11 @@ public class FCOConnector extends CliConnectorBase {
 			try {
 				String[] instanceData = parseRunInstanceResult(e.getStdOut());
 				updateInstanceIdAndIpOnRun(run, instanceData[0], instanceData[1]);
-			} 
-			catch (Exception ex) {
-				e.printStackTrace();				
 			}
-			throw e;			
+			catch (Exception ex) {
+				e.printStackTrace();
+			}
+			throw e;
 		} finally {
 			deleteTempSshKeyFile();
 		}
@@ -154,7 +154,7 @@ public class FCOConnector extends CliConnectorBase {
 		// just a UUID and it's IP address. We return just a bit more than
 		// that so pull out the bits we need
 		log.info("Launch gave us back: " + result);
-		
+
 		String[] instanceData = parseRunInstanceResult(result);
 
 		log.info("instanceData: " + instanceData[0] + " " + instanceData[1]);
@@ -206,6 +206,8 @@ public class FCOConnector extends CliConnectorBase {
         	nodename = getOrchestratorName(run);
         }
 
+
+
 		// Context string needs to be wrapped in CDATA[] to get it past Jade validation, and
 		// the whole thing needs to be single-quoted to stop the shell trying to interpret
 		// parts of the data too....
@@ -230,8 +232,7 @@ public class FCOConnector extends CliConnectorBase {
 				+ getConnectorInstanceName() + "#";
 
 		contextualization += "export SLIPSTREAM_BUNDLE_URL="
-				+ configuration
-						.getRequiredProperty("slipstream.update.clienturl")
+				+ configuration.getRequiredProperty("slipstream.update.clienturl")
 				+ "#";
 
 		contextualization += "export CLOUDCONNECTOR_BUNDLE_URL="
@@ -478,7 +479,7 @@ public class FCOConnector extends CliConnectorBase {
 	}
 
 	private String getRunInstanceCommand(Run run, User user)
-			throws InvalidElementException, ValidationException, AbortException, 
+			throws InvalidElementException, ValidationException, AbortException,
 			SlipStreamClientException, IOException, ConfigurationException,
 			ServerExecutionEnginePluginException {
 
@@ -494,7 +495,7 @@ public class FCOConnector extends CliConnectorBase {
 
 		log.info("Some Parameter Values:\n");
 		log.info("Mod Cat: " + run.getCategory());
-		
+
 		String extraDiskName = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + "volatile";
 		String extraDiskSize = "0";
 		try{
@@ -512,10 +513,10 @@ public class FCOConnector extends CliConnectorBase {
 			}
 		}
 
-		// Disk Size must be one of the standard sizes 
+		// Disk Size must be one of the standard sizes
 		String validStandardSizes="20, 50, 100, 150, 250, 500, 750,";
 		if (extraDiskSize != null){
-			if (!(extraDiskSize.equals("0") || 
+			if (!(extraDiskSize.equals("0") ||
 					validStandardSizes.contains(extraDiskSize + ",") ||
 					extraDiskSize.equals("1000"))){
 				throw new ValidationException("Extra volatile disk size must be one of "
@@ -525,7 +526,7 @@ public class FCOConnector extends CliConnectorBase {
 		else{
 			extraDiskSize = "0";
 		}
-		
+
 		if (run.getCategory() == ModuleCategory.Image){
 			image = ImageModule.load(run.getModuleResourceUrl());
 			ramMb = getRam(image);
@@ -533,7 +534,7 @@ public class FCOConnector extends CliConnectorBase {
 			log.info("RAM from image is : " + ramMb);
 			log.info("CPU from image is : " + cpuCount);
 			log.info("Extra Disk Size is: " + extraDiskSize);
-			log.info("Extra Disk Name is: " + extraDiskName);			
+			log.info("Extra Disk Name is: " + extraDiskName);
 		}
 		else if (run.getCategory() == ModuleCategory.Deployment){
 			Module module = run.getModule();
@@ -546,6 +547,12 @@ public class FCOConnector extends CliConnectorBase {
             	log.info("RAM from Deployment image is: " + ramMb);
             	log.info("CPU from Deployment image is: " + cpuCount);
             }
+		}
+
+		// Force the Orchestrator machine to be 4Gb / 4CPU
+		if (run != null && isInOrchestrationContext(run)){
+			ramMb = "4096";
+			cpuCount = "4";
 		}
 
 		// Path needs to match that in python/rpm/pom.xml
@@ -563,7 +570,7 @@ public class FCOConnector extends CliConnectorBase {
 				+ " --cpu " + cpuCount
 				;
 	}
-	
+
 	protected void validateUserParams(User user) throws ValidationException {
 		String errorMessageLastPart = getErrorMessageLastPart(user);
 
