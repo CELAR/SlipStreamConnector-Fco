@@ -33,8 +33,6 @@ from packages.fco_rest import wait_for_resource
 
 import config
 import argparse
-
-# import datetime for filename gen
 import datetime
 import time
 
