@@ -2,6 +2,8 @@ import requests
 import json
 import time
 
+isVerbose = False
+
 def getToken(endpoint, username, cust_uuid, password):
     tokenURL = "%srest/user/current/authentication" % endpoint
     apiUserName = username + "/" + cust_uuid
@@ -34,7 +36,8 @@ def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uu
 
     payload=nic
 
-    print(payload)                                         
+    if (isVerbose):
+        print(payload)                                         
     payload_as_string = json.JSONEncoder().encode(payload)
 
     # Need to set the content type, because if we don't the payload is just silently ignored
@@ -43,11 +46,10 @@ def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uu
 #    print(res.content)    
     print("==============================================================")
                      
-        
-    print(res.url)        
-
-    print("res=" + str(res))
-    print res.content
+    if (isVerbose):    
+        print(res.url)        
+        print("res=" + str(res))
+        print res.content
     #print res.status_code
 
     # Status 202 (accepted) is good
@@ -175,6 +177,35 @@ def create_nic(auth_parms, nic_count, network_type, cluster_uuid, vdc_uuid):
     nic_uuid = nic_result_set['itemUUID']
     return nic_uuid
 
+def list_image(auth_params, uuid):
+    """ Get Image details """
+    
+    # Setup serach filter
+    sf ={ "searchFilter" : 
+          { "filterConditions": [{"condition": "IS_EQUAL_TO", 
+                                  "field": "resourceUUID",
+                                  "value": [uuid]
+                                 }
+                                ]
+          }                      
+        }
+
+    if (isVerbose):    
+        print("sf=")
+        print sf
+        print("---")
+    
+    result_set = rest_list_resource(auth_params, "image", sf)
+    
+    if result_set['totalCount'] == 0:
+        raise Exceptions.ExecutionException("Image " + uuid + " not found or you do not have permissions to use it")
+ 
+    print("==== Image Result ====")
+    print result_set
+    print("=========");
+    # return just the first element (there was only one, right ?), otheriwse we end up doing e.g. img_ret['list'][0]['vdcUUID']
+    # all over the place
+    return result_set['list'][0]
 
 def rest_list_resource(auth_parms, res_type, payload):
     print auth_parms    
@@ -202,7 +233,6 @@ def rest_list_resource(auth_parms, res_type, payload):
         #print("res.content=" + str(res.content))
 
         response = json.loads(res.content)       
-        print("Type of response =" + str(type(response)))
         #print "response=" + str(response)
         
         print("count=" + str(response['totalCount']))
@@ -242,6 +272,51 @@ def rest_change_server_status(auth_parms, server_uuid, new_state):
     
     #print(response['message'] + " (error code: " + response['errorCode'] + ")")
     return ""
+
+def get_prod_offer_uuid(auth_parms, prod_offer_name):
+    """ Get product offer UUID when given product offer name """
+    sf ={ "searchFilter" : 
+          { "filterConditions": [{"condition": "IS_EQUAL_TO",
+                                  "field": "resourceState",   
+                                  "value": ["ACTIVE"]
+                                 },
+                                 {"condition": "IS_EQUAL_TO",
+                                  "field": "resourceName",   
+                                  "value": [prod_offer_name]
+                                 }                                 
+                                ] 
+          }
+        }
+    
+
+    print("Product Offer Search Filter:")
+    print(sf)
+
+    prod_offer_result_set = rest_list_resource(auth_parms, res_type="productoffer", payload=sf)
+    
+    print("Prod_Offer_Result_Set:\n");
+    print prod_offer_result_set
+
+    po = prod_offer_result_set['list'][0]
+    prod_offer_uuid = po['resourceUUID']
+    print("Product Offer UUID for " + prod_offer_name + " is " + prod_offer_uuid)
+    return prod_offer_uuid
+
+def list_sshkeys(auth_parms, customer_uuid):
+    sf ={ "searchFilter" : 
+          { "filterConditions": [{"condition": "IS_EQUAL_TO",
+                                  "field": "customerUUID",   
+                                  "value": [customer_uuid]
+                                 }                                 
+                                ] 
+          }
+        }
+
+    key_result_set = rest_list_resource(auth_parms, res_type="sshkey", payload=sf)
+    print("SSHKEY for customer " + customer_uuid + " is:\n")
+    print key_result_set
+    print("\======== End SSHKey ==========\n")
+    return key_result_set
 
 def create_sshkey(auth_parms, public_key, public_key_name):
      

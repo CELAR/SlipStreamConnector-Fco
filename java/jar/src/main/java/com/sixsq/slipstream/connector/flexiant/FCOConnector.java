@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import javax.xml.bind.DatatypeConverter;
+
 import com.sixsq.slipstream.configuration.Configuration;
 import com.sixsq.slipstream.connector.CliConnectorBase;
 import com.sixsq.slipstream.connector.Connector;
@@ -211,53 +213,65 @@ public class FCOConnector extends CliConnectorBase {
 		// Context string needs to be wrapped in CDATA[] to get it past Jade validation, and
 		// the whole thing needs to be single-quoted to stop the shell trying to interpret
 		// parts of the data too....
-		String contextualization ="'";
-		contextualization += "<celar-code><![CDATA[";
+		String sepChar = "\n";
 
-		contextualization += "export SLIPSTREAM_DIID=" + run.getName() + "#";
+        //String contextualization ="'";
+        String contextualization ="#!/bin/sh" + sepChar;
+		//contextualization += "<celar-code><![CDATA[";
+
+
+		contextualization += "export SLIPSTREAM_DIID=" + run.getName() + sepChar;
 		contextualization += "export SLIPSTREAM_SERVICEURL=" + configuration.baseUrl
-				+ "#";
+				+ sepChar;
 		contextualization += "export SLIPSTREAM_NODENAME=" + nodename
-				+ "#";
+				+ sepChar;
 		contextualization += "export SLIPSTREAM_CATEGORY="
-				+ run.getCategory().toString() + "#";
-		contextualization += "export SLIPSTREAM_USERNAME=" + user.getName() + "#";
+				+ run.getCategory().toString() + sepChar;
+		contextualization += "export SLIPSTREAM_USERNAME=" + user.getName() + sepChar;
 
-		contextualization += "export SLIPSTREAM_COOKIE=" + cookie + "#";
+		contextualization += "export SLIPSTREAM_COOKIE=" + cookie + sepChar;
 
 		contextualization += "export SLIPSTREAM_VERBOSITY_LEVEL=" + verbosityLevel
-				+ "#";
-		contextualization += "export SLIPSTREAM_CLOUD=" + getCloudServiceName() + "#";
+				+ sepChar;
+		contextualization += "export SLIPSTREAM_CLOUD=" + getCloudServiceName() + sepChar;
 		contextualization += "export SLIPSTREAM_CONNECTOR_INSTANCE="
-				+ getConnectorInstanceName() + "#";
+				+ getConnectorInstanceName() + sepChar;
 
 		contextualization += "export SLIPSTREAM_BUNDLE_URL="
 				+ configuration.getRequiredProperty("slipstream.update.clienturl")
-				+ "#";
+				+ sepChar;
 
 		contextualization += "export CLOUDCONNECTOR_BUNDLE_URL="
 				+ configuration
 						.getRequiredProperty(constructKey("update.clienturl"))
-				+ "#";
+				+ sepChar;
 
 		contextualization += "export CLOUDCONNECTOR_PYTHON_MODULENAME="
-				+ CLOUDCONNECTOR_PYTHON_MODULENAME + "#";
+				+ CLOUDCONNECTOR_PYTHON_MODULENAME + sepChar;
 
 		contextualization += "export SLIPSTREAM_BOOTSTRAP_BIN="
 				+ configuration
 						.getRequiredProperty("slipstream.update.clientbootstrapurl")
-				+ "#";
+				+ sepChar;
 
 		contextualization += "export SLIPSTREAM_REPORT_DIR=" + SLIPSTREAM_REPORT_DIR;
 
-		contextualization += "#" + constructInstallDependenciesCommand();
-		contextualization += "#" + constructScriptExecCommand(run);
-		contextualization += "]]></celar-code>";	// Close <!CData[[...
-		contextualization += "'";					// Close single quotes we've wrapped around the entire context script
+		contextualization += sepChar + constructInstallDependenciesCommand();
+		contextualization += sepChar + constructScriptExecCommand(run);
+		//contextualization += "]]></celar-code>";	// Close <!CData[[...
+		//contextualization += "'";					// Close single quotes we've wrapped around the entire context script
+		//String base64ContextScript=encodeToBase64(contextualization);
+		String base64ContextScript=DatatypeConverter.printBase64Binary(contextualization.getBytes());
 
-		String xmlSafecontextualization = contextualization.replaceAll("&","&amp;");
-		log.info("Contextulization is:" + xmlSafecontextualization);
+		//String xmlSafecontextualization = contextualization.replaceAll("&","&amp;");
+		//log.info("Contextulization is:" + xmlSafecontextualization);
 
+		String xmlSafecontextualization = "'<celar-code><![CDATA[" +
+											"echo " + base64ContextScript +
+											"|base64 -d |tee /tmp/fco-script2.sh" + "\n" +
+											"chmod 700 /tmp/fco-script2.sh\n" +
+											"/tmp/fco-script2.sh\n" +
+											"]]></celar-code>'";
 		return xmlSafecontextualization;
 
 	}
@@ -281,7 +295,7 @@ public class FCOConnector extends CliConnectorBase {
 				+ "/orchestrator.slipstream.log 2>&1 && chmod 0755 "
 				+ bootstrap + "; " + bootstrap + mode + " >> "
 				+ SLIPSTREAM_REPORT_DIR + "/orchestrator.slipstream.log 2>&1\""
-				+ "#eval ${SCRIPT_EXEC}";  // N.B. The # character is needed for the Perl split() to latch on to
+				+ "\neval ${SCRIPT_EXEC}";
 	}
 
 	private String constructInstallDependenciesCommand() throws ConfigurationException {
@@ -290,8 +304,8 @@ public class FCOConnector extends CliConnectorBase {
 
 		return "INSTALL_EXEC=\"test -x /usr/bin/apt-get  && "
 				+ "apt-get update " + " >" + log + " 2>&1"
-				+ " && apt-get -y install python-suds "  + " >" + log + " 2>&1\""
-				+ "#eval ${INSTALL_EXEC}";  // N.B. The # character is needed for the Perl split() to latch on to
+				+ " && apt-get -y install python-suds python-requests "  + " >" + log + " 2>&1\""
+				+ "\neval ${INSTALL_EXEC}";
 	}
 
 //	private String[] parseResult(String result)

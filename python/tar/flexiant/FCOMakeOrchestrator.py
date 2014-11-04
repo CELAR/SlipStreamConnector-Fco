@@ -1,5 +1,6 @@
 #!/usr/bin/python
-# This python script is used to test creating many VMs in FCO using UserAPI
+# 
+#
 
 import os
 import sys
@@ -10,22 +11,25 @@ sys.path.insert(1, '.')
 
 import slipstream.exceptions.Exceptions as Exceptions
 
-# import functions from files in packages folder
-from packages.user_auth import ini_auth
-from packages.vdc_ops import create_vdc
-from packages.vdc_ops import get_first_vdc_in_cluster
-from packages.image_ops import get_image_uuid
-from packages.job_ops import wait_for_job
-from packages.server_ops import create_nic
-from packages.server_ops import add_nic_to_server
-from packages.server_ops import wait_for_install
-from packages.server_ops import wait_for_server
-from packages.server_ops import change_server_status
-from packages.server_ops import get_server_state
-from packages.server_ops import get_server_data
-from packages.resource_ops import list_resource
-from packages.resource_ops import wait_for_resource
-
+from packages.fco_rest import add_nic_to_server
+from packages.fco_rest import attach_disk
+from packages.fco_rest import attach_ssh_key
+from packages.fco_rest import change_server_status
+from packages.fco_rest import create_nic
+from packages.fco_rest import create_sshkey
+from packages.fco_rest import create_vdc
+from packages.fco_rest import getToken
+from packages.fco_rest import get_first_vdc_in_cluster
+from packages.fco_rest import get_prod_offer_uuid
+from packages.fco_rest import get_server_state
+from packages.fco_rest import list_image
+from packages.fco_rest import list_resource_by_uuid
+from packages.fco_rest import list_sshkeys
+from packages.fco_rest import rest_create_disk
+from packages.fco_rest import rest_create_server
+from packages.fco_rest import wait_for_install
+from packages.fco_rest import wait_for_job
+from packages.fco_rest import wait_for_resource
 
 import config
 import argparse
@@ -34,257 +38,87 @@ import argparse
 import datetime
 import time
 
-# you can change INFO to DEBUG for (a lot) more information)
-import logging
-logging.basicConfig(level=logging.INFO)
-logging.getLogger('suds.client').setLevel(logging.INFO)
-logging.getLogger('suds.transport').setLevel(logging.INFO)
-logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
-logging.getLogger('suds.wsdl').setLevel(logging.INFO)
-
-
-def setup_test():
-    """Function to set up api session, import credentials etc."""
-    # Setup root login etc from config file
-    auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
-    return auth_client
-
-def create_vdc_in_cluster(vdc_client, cluster_uuid):
+def create_vdc_in_cluster(auth, cluster_uuid):
     """ Create VDC for customer """
     ts = time.time()
     vdc_name = "VDC " + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-    # Setup vdc object
-    vdc_data = vdc_client.factory.create('vdc')
-    vdc_data.vdcName = vdc_name
-    vdc_data.resourceName = vdc_name
-    vdc_data.clusterUUID = cluster_uuid
-    
-    print("=== Settings for VDC Creation ====")
-    print vdc_data
-    print("==================================")
-    
-    create_vdc_job = vdc_client.service.createVDC(vdc_data)
-    
+    vdc_ret=create_vdc(auth, cluster_uuid, vdc_name)
+
     print("=== VDC Creation job ===")
-    print create_vdc_job
+    print vdc_ret
     print("========================")
     
-    return create_vdc_job.itemUUID
+    return vdc_ret['itemUUID']
 
-def list_sshkeys(auth_client, customer_uuid):
-    sf = auth_client.factory.create('searchFilter')
-    fc1 = auth_client.factory.create('filterConditions')
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'customerUUID'
-    fc1.value = customer_uuid
-    sf.filterConditions.append(fc1)
-    key_result_set = auth_client.service.listResources(searchFilter=None, resourceType='SSHKEY')
-    print("SSHKEY for customer " + customer_uuid + " is:\n")
-    print key_result_set
-    print("\======== End SSHKey ==========\n")
-    return key_result_set
-
-
-def AddKey(auth_client, server_uuid, customerUUID, publicKey):
+def AddKey(auth_parms, server_uuid, customerUUID, publicKey):
 
     print("AddKey Args: server:" + server_uuid + " customer: " + customerUUID + " publicKey:")
     print publicKey
     print("== end AddKey Args ==\n")
 
-
-    key_ret = list_sshkeys(auth_client, customerUUID)
-
+    key_ret = list_sshkeys(auth_parms, customerUUID)
 
     # See how many keys are there extract number of Servers from result set
     create = True
     key_item_uuid = ""
-    if (key_ret.totalCount == 0):
-      msg = "No Key found for Customer with uuid " + customerUUID
+    if (key_ret['totalCount'] == 0):
       create = True
     else:
       # Key's exist; check if the one we are about to add is one of them
       print key_ret
-      for x in range(0, key_ret.totalCount):
+      for x in range(0, key_ret['totalCount']):
          print("---")
-         print key_ret.list[x]
+         print key_ret['list'][x]
          print("----")
-         if (key_ret.list[x].publicKey == publicKey):
+         if (key_ret['list'][x]['publicKey'] == publicKey):
             print "Customer already has key attached to their account"
-            key_item_uuid = key_ret.list[x].resourceUUID
+            key_item_uuid = key_ret['list'][x]['resourceUUID']
             create = False
          # else:
          #   print("Key" +  key_ret.list[x].resourceUUID + " does not match")
 
-    # print key_result_set;
-    # server_data = key_result_set.list[0]
-    # print server_data
-    # return server_data
-    # print ret
-    # print ("!!!!")
-
     if (create):
         print("===== Customer needs SSH key added =====")
-        ssh_key = auth_client.factory.create('sshKey')
-        ssh_key.publicKey = publicKey
-        ssh_key.resourceType = 'SSHKEY'
-        ssh_key.globalKey = False
-
-        ssh_key.customerUUID = customerUUID
-        print ssh_key
-        print("===========\n")
-
-        add_ret = auth_client.service.createSSHKey(ssh_key)
+        public_key_name=''
+        add_ret = create_sshkey(auth_parms, publicKey, public_key_name)
         print add_ret
-        key_item_uuid = add_ret.itemUUID
-
-    # server_data = list_server(auth_client, server_uuid)
-    # print server_data
+        key_item_uuid = add_ret['itemUUID']
 
 
     # Attach the key (be it existing or newly created) to the server
-
-    attach_ret = auth_client.service.attachSSHKey(serverUUID=server_uuid, SSHKeyUUID=key_item_uuid)
+    attach_ret = attach_ssh_key(auth_parms, server_uuid=server_uuid, sshkey_uuid=key_item_uuid)
     print attach_ret
 
     return attach_ret
 
-def get_prod_offer_uuid(server_client, prod_offer_name):
-    """ Get product offer UUID when given product offer name """
-    sf1 = server_client.factory.create('searchFilter')
-#    print sf1
-    # create filter conditions object
-    fc1 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'resourceState'
-    fc1.value = 'ACTIVE'
-
-    # debug print statement
-#    print fc1
-    sf1.filterConditions.append(fc1)
-    fc2 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    fc2.condition = 'IS_EQUAL_TO'
-    fc2.field = 'resourceName'
-    fc2.value = prod_offer_name
-    sf1.filterConditions.append(fc2)
-
-    # fc3 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    # fc3.condition = 'IS_NOT_EQUAL_TO'
-    # fc3.field = 'resourceType'
-    # fc3.value = 'JOB'
-    # sf1.filterConditions.append(fc3)
-
-    print("Search Filter 1:")
-    print(sf1)
-
-    prod_offer_result_set = server_client.service.listResources(searchFilter=sf1)
-    print("Prod_Offer_Result_Set:\n");
-    print prod_offer_result_set
-    prod_offer_result_set = server_client.service.listResources(searchFilter=sf1, resourceType="PRODUCTOFFER")
-
-    prod_offer_uuid = prod_offer_result_set.list[0].resourceUUID
-    print("Product Offer UUID for " + prod_offer_name + " is " + prod_offer_uuid)
-    return prod_offer_uuid
-
-def list_thingy(server_client, uuid, res_type):
-    """ Get product offer UUID when given product offer name """
-    sf1 = server_client.factory.create('searchFilter')
-#    print sf1
-    # create filter conditions object
-    fc1 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'resourceUUID'
-    fc1.value = uuid
-    # debug print statement
-#    print fc1
-    sf1.filterConditions.append(fc1)
-    # set filter condition values
-    print sf1
-    result_set = server_client.service.listResources(searchFilter=sf1, resourceType=res_type)
-    print result_set
-    return result_set
-
-def list_image(server_client, uuid):
-    """ Get product offer UUID when given product offer name """
-    sf1 = server_client.factory.create('searchFilter')
-#    print sf1
-    # create filter conditions object
-    fc1 = server_client.factory.create('filterConditions')
-    # set filter condition values
-    fc1.condition = 'IS_EQUAL_TO'
-    fc1.field = 'resourceUUID'
-    fc1.value = uuid
-    # debug print statement
-#    print fc1
-    sf1.filterConditions.append(fc1)
-    # set filter condition values
-    print("=== Image Search filter ====")
-    print sf1
-    print("==========");
-    result_set = server_client.service.listResources(searchFilter=sf1, resourceType="IMAGE")
-    if result_set.totalCount == 0:
-        raise Exceptions.ExecutionException("Image " + uuid + " not found or you do not have permissions to use it")
- 
-    print("==== Result ====")
-    print result_set
-    print("=========");
-    return result_set
-
-def create_disk(server_client, prod_offer, disk_size, disk_name, vdc_uuid):
+def create_disk(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
     """ Function to create disk """
-    # get prod offer uuid
-    prod_offer_uuid = get_prod_offer_uuid(server_client, prod_offer)
-    # setup skeleton disk data structure
-    skel_disk = server_client.factory.create('disk')
-    skel_disk.resourceType = "DISK"
-    skel_disk.productOfferUUID = prod_offer_uuid
-    skel_disk.size = disk_size
-    skel_disk.resourceName = disk_name
-    skel_disk.resourceState = 'ACTIVE'
-#    skel_disk.billingEntityUUID = be_uuid # is this needed ?
-    skel_disk.vdcUUID = vdc_uuid
-    print("Skeleton disk")
-    print skel_disk
-    print("==============")
-    disk_job = server_client.service.createDisk(skeletonDisk=skel_disk)
-    disk_uuid = disk_job.itemUUID
+
+    # get product offer uuid for the disk in question
+    prod_offer_uuid = get_prod_offer_uuid(auth_parms, prod_offer)
+
+    disk_job=rest_create_disk(auth_parms, vdc_uuid,  prod_offer_uuid, disk_name, disk_size)
+
+    disk_uuid = disk_job['itemUUID']
     print("our newly created disk UUID=" + disk_uuid)
 
     # Check the job completes    
-    status = wait_for_job(server_client, disk_job.resourceUUID, "SUCCESSFUL", 90)
+    status = wait_for_job(auth_parms, disk_job['resourceUUID'], "SUCCESSFUL", 90)
     if (status != 0):
         raise Exceptions.ExecutionException("Failed to add create disk (uuid=" + disk_uuid + ")")
                     
-    list_thingy(server_client, disk_uuid, res_type="DISK")
-    print("===========")
     return disk_uuid
+#
 
-# def add_resource_key(auth_client, server_uuid, key_name, key_value, key_type, key_weight):
-#     print ("add_resource_key for server " + server_uuid + ": " + key_name + ":" + key_value)
-#     res_key = auth_client.factory.create('resourceKey')
-#     res_key.name = key_name
-#     res_key.type = key_type
-#     res_key.value = key_value
-#     res_key.weight = key_weight
-#     ret_val = auth_client.service.addKey(server_uuid, res_key)
-#     print "add_resource_key Return Value for server " + server_uuid + ": "
-#     print ret_val
-#     print "=========================================================="
-#     return ret_val
+def build_server(auth_parms, customer_uuid, image_uuid, vdc_uuid, server_po_uuid, boot_disk_po_uuid, 
+                server_name, ram_amount, cpu_count, networkType, cluster_uuid, public_key, context_script):
+    """Function to create a server"""
 
-
-# Modified version of the one in server_ops
-def create_server(server_client, customerUUID, image_uuid, vdc_uuid, server_po_uuid, boot_disk_po_uuid, server_name, ram_amount,
-                  cpu_count, public_key, context_script):
-    """ Create Server for customer """
-
-    print "FCOMakeOrchestrator.py:create_server args:"
-    print "customerUUID: " + customerUUID
+    print "FCOMakeOrchestrator.py:build_server args:"
+    print "customer_uuid: " + customer_uuid
     print "image_uuid: " + image_uuid    
+    print "cluster_uuid: " + cluster_uuid
     print "vdc_uuid: " + vdc_uuid
     print "server_po_uuid: " + server_po_uuid
     print "boot_disk_po_uuid:" + boot_disk_po_uuid,
@@ -293,140 +127,54 @@ def create_server(server_client, customerUUID, image_uuid, vdc_uuid, server_po_u
     print "cpu_count: " + str(cpu_count)
     print "public_key: " + public_key
     print "context_script: " + context_script
-    print "=== end FCOMakeOrchestrator.py:create_server args ==="
+    print "=== end FCOMakeOrchestrator.py:build_server args ==="
 
-#    # Find product offer UUID
-#    sf1 = server_client.factory.create('searchFilter')
-#    # create filter conditions object
-#    fc1 = server_client.factory.create('filterConditions')
-#    # set filter condition values
-#    fc1.condition = 'IS_EQUAL_TO'
-#    fc1.field = 'resourceState'
-#    fc1.value = 'ACTIVE'
-#
-#    sf1.filterConditions.append(fc1)
-#    fc2 = server_client.factory.create('filterConditions')
-#    # set filter condition values
-#    fc2.condition = 'IS_EQUAL_TO'
-#    fc2.field = 'resourceName'
-#    fc2.value = prod_offer
-#    sf1.filterConditions.append(fc2)
-#    print sf1
-#    prod_offer_result_set = server_client.service.listResources(searchFilter=sf1, resourceType="PRODUCTOFFER")
-#    prod_offer_uuid = prod_offer_result_set.list[0].resourceUUID
 
-    # Get cluster uuid
-    cluster_result_set = server_client.service.listResources(resourceType="CLUSTER")
-    cluster_uuid = cluster_result_set.list[0].resourceUUID
-
-    # Create server
-    server_data = server_client.factory.create('server')
-#    if inc_flag == 'TRUE':
-#        server_data.resourceName = server_name + " " + str(server_inc)
-#    else:
-    server_data.resourceName = server_name
-    server_data.productOfferUUID = server_po_uuid
-    server_data.imageUUID = image_uuid
-    server_data.clusterUUID = cluster_uuid
-    server_data.vdcUUID = vdc_uuid
-    server_data.cpu = cpu_count
-    server_data.ram = ram_amount  # '512'
-    disk_data = server_client.factory.create('disk')
-    disk_data.resourceUUID = boot_disk_po_uuid
-    disk_data.resourceType = "DISK"
-    disk_data.vdcUUID = vdc_uuid
-    print("Disk Data:")
-    print(disk_data)
-    print("Server Data:")
-    print(server_data)
-
-    #server_data.disks[0] = disk_data
-    server_data.disks.append(disk_data)
-    
-#    disk_result = list_thingy(server_client, disk_uuid, res_type="DISK")
-#    # Need somne validation here because failures go undetected
-#    print("disky result=")
-#    print(disk_result)
-#    server_data.disks = disk_result.list[0]
-    print server_data
-    # disk_data.size = 20
-    # How to add a second disk ?
-    # server_data.disk[0].resourceUUID = disk_uuid
-
-    # Metadata.
-    print "\n context_script being fed in to server_data.resourceMetadata.publicMetadata is:\n"
-    print context_script
-    server_data.resourceMetadata.publicMetadata = context_script
-    print "\n"
-
-    print "--- server data ----"
-    print server_data
-    create_server_jobid = server_client.service.createServer(server_data)
+    create_server_job = rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, 
+                                             cluster_uuid, vdc_uuid, cpu_count,
+                                             ram_amount, boot_disk_po_uuid, context_script)
 #    print create_server_jobid
 
-    server_uuid = create_server_jobid.itemUUID
+    server_uuid = create_server_job['itemUUID']
     print "--- createServer done with UUID " + server_uuid + " -----"
 
     print("public_key = " + public_key)
-    add_ret = AddKey(server_client, server_uuid, customerUUID, public_key)
+    add_ret = AddKey(auth_parms, server_uuid, customer_uuid, public_key)
     print("== AddKey Result ==")
     print add_ret
     print("====")
-    # add_resource_key(server_client, server_uuid, "__#CloudInit","#!/bin/bash\ntouch /tmp/xxx\n","USER_KEY",0)
-
-    # Metadata. Can only add it here once we know the server uuid
-    # md = server_client.factory.create('resourceMetadata')
-    # md.resourceUUID = server_uuid
-    # md.publicMetadata = "This is public - set during create" + context_script
-    # result = server_client.service.updateMetadata(server_uuid,md)
-    # print "=== METADATA RESULT ==="
-    # print result
-    # print "======================="
-
-    return server_uuid
-
-
-def build_server(auth_client, customer_uuid, image_uuid, vdc_uuid, server_po_uuid, boot_disk_po_uuid, 
-                server_name, ram_amount, cpu_count, networkType, cluster_uuid, public_key, context_script):
-    """Function to create a server"""
-    print "in build_server using image " + image_uuid
-    server_uuid = create_server(server_client=auth_client, customerUUID=customer_uuid,
-                                image_uuid=image_uuid, vdc_uuid=vdc_uuid, 
-                                server_po_uuid=server_po_uuid, boot_disk_po_uuid=boot_disk_po_uuid,
-                                server_name=server_name,
-                                ram_amount=ram_amount, cpu_count=cpu_count,
-                                public_key=public_key,
-                                context_script=context_script)
-    wait_for_install(server_client=auth_client, server_uuid=server_uuid)
+                             
+    wait_for_install(auth_parms, server_uuid=server_uuid)
 
     # Add NIC to server
     print "Calling create_nic for network " + networkType
-    nic_uuid = create_nic(server_client=auth_client, nic_count='0', network_type=networkType, 
+    nic_uuid = create_nic(auth_parms=auth_parms, nic_count='0', network_type=networkType, 
                           cluster_uuid=cluster_uuid, vdc_uuid=vdc_uuid)
     print "create_nic returned nic_uuid: " + nic_uuid
-    wait_for_resource(res_client=auth_client, res_uuid=nic_uuid, state='ACTIVE', res_type='NIC')
+    wait_for_resource(auth_parms=auth_parms, res_uuid=nic_uuid, state='ACTIVE', res_type='nic')
     print "nic uuid: " + nic_uuid
 
-    add_nic_response = add_nic_to_server(server_client=auth_client, server_uuid=server_uuid, nic_uuid=nic_uuid, index='1')
+    add_nic_response = add_nic_to_server(auth_parms=auth_parms, server_uuid=server_uuid, nic_uuid=nic_uuid, index='1')
     
     # Wait on the addNic job completing
-    status = wait_for_job(auth_client, add_nic_response.resourceUUID, "SUCCESSFUL", 90)
+    status = wait_for_job(auth_parms, add_nic_response['resourceUUID'], "SUCCESSFUL", 90)
     if (status != 0):
         raise Exceptions.ExecutionException("Failed to add NIC to server") 
     
     # Lookup server properties to get UUID, and password, that have been assigned to it
-    server_resultset = list_resource(res_client=auth_client, res_uuid=server_uuid, res_type='SERVER')
+    server_resultset = list_resource_by_uuid(auth_parms, uuid=server_uuid, res_type='SERVER')
+    server = server_resultset['list'][0]
 
 #    print server_resultset
-    server_uuid = server_resultset.list[0].resourceUUID
-    server_pw = server_resultset.list[0].initialPassword
-    server_user = server_resultset.list[0].initialUser
+    server_uuid = server['resourceUUID']
+    server_pw = server['initialPassword']
+    server_user = server['initialUser']
 #    server_ip = server_resultset.list[0].nics[0].ipAddresses[0].ipAddress
     server_data = [server_uuid, server_pw, server_user]
     return server_data
 
 def is_ssh_port_open(server_ip, max_wait):
-    cli=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#    cli=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ok=0
     poll_interval = 5
     limit= max_wait / poll_interval # number of times to retry (approximately)
@@ -451,12 +199,12 @@ def is_ssh_port_open(server_ip, max_wait):
 
     print("SSH probe complete with " + str(limit) + " tries left (ok=" + str(ok) +")")
 
-def start_server(auth_client, server_data):
+def start_server(auth_parms, server_data):
     """Function to start server, uuid in server_data"""
     server_uuid = server_data[0]
-    server_state = get_server_state(auth_client, server_uuid)
+    server_state = get_server_state(auth_parms, server_uuid)
     if server_state == 'STOPPED':
-        rc = change_server_status(server_client=auth_client, server_uuid=server_uuid, state='RUNNING')
+        rc = change_server_status(auth_parms=auth_parms, server_uuid=server_uuid, state='RUNNING')
         # change_server_status() waits on the server getting to the requested state, so we don't
         # need to call wait_for_server() here. However, we do (1) need to check the status and (2)
         # wait on the server actually being accessible (as opposed to having a RUNNING state in
@@ -467,9 +215,13 @@ def start_server(auth_client, server_data):
             raise Exceptions.ExecutionException("Failed to put server " + server_uuid + " in to running state")
             
 
-    server_resultset = get_server_data(server_client=auth_client, server_uuid=server_uuid)
-    server_ip = server_resultset.list[0].nics[0].ipAddresses[0].ipAddress
-
+    server_resultset = list_resource_by_uuid(auth_parms, uuid=server_uuid, res_type='SERVER')
+    print("Server result set is:")
+    print server_resultset
+    
+    server_ip = server_resultset['list'][0]['nics'][0]['ipAddresses'][0]['ipAddress']  # yuk
+    print("server IP=" + server_ip)
+    
     # Step 2. Wait on it being accessible. It is possible that the server doesn't have ssh installed,
     # or it is firewalled, so don't fail here if we can't connect, just carry on and let 
     # the caller deal with any potential issue. The alternative is a hard-coded sleep, or 
@@ -478,39 +230,6 @@ def start_server(auth_client, server_data):
 
     server_data.append(server_ip)
     return server_data
-
-
-# def stop_server(auth_client, server_data):
-#     """Function to stop server, uuid provided in server data"""
-#     server_uuid = server_data[0]
-#     change_server_status(server_client=auth_client, server_uuid=server_uuid, state='STOPPED')
-#     wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-#     server_state = get_server_state(auth_client, server_uuid)
-#     return server_state
-
-
-#def upload_file(server_data):
-#    """Function to log into server and download file"""
-#    server_uuid = server_data[0]
-#    server_pw = server_data[1]
-#    server_user = server_data[2]
-#    server_ip = server_data[3]
-#    srv = pysftp.Connection(username=server_user, password=server_pw, host=server_ip)
-#    ts = time.time()
-#   tstamp1 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-#    print "Start file transfer: " + tstamp1
-#    srv.put(LOCAL_FILE)
-#    srv.close
-#    ts = time.time()
-#    tstamp2 = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-#    print "Complete file transfer: " + tstamp2
-
-
-#def assert_billing(auth_client):
-#    """Function to check the billing for the downloaded files."""
-#    billing_results = list_unit_transactions(auth_client)
-#    print billing_results
-#    return billing_results
 
 def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoint, networkType,
            extra_disk_size, ramAmount, cpuCount, public_key, isVerbose=False, contextScript=None):
@@ -544,47 +263,51 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
         for param in os.environ.keys():
             print "%20s %s" % (param, os.environ[param])
         print("=-=-=-=-=-=-\n")
-   
-    auth_client = setup_test()
 
-    if (isVerbose):
-        print("Details for image_uuid " + image_uuid + ":\n");
+    # Authenticate to the FCO API, getting a token for furture use   
+    token = getToken(endpoint, customerUsername, customerUUID, customerPassword)
+       
+    auth=dict(endpoint=endpoint, token=token)
 
-    img_ret = list_image(auth_client, image_uuid)
-    vdc_uuid_for_image = img_ret.list[0].vdcUUID
-    if (isVerbose):
-        print("vdc_uuid_for_image is " + vdc_uuid_for_image)
+
+    print("Details for image_uuid " + image_uuid + ":\n");
+
+    img_ret = list_image(auth, image_uuid)
+    vdc_uuid_for_image = img_ret['vdcUUID']
+    #if (isVerbose):
+    print("vdc_uuid_for_image is " + vdc_uuid_for_image)
     
-    cluster_uuid_for_image = img_ret.list[0].clusterUUID
-    if (isVerbose):
-        print("cluster_uuid_for_image is " + cluster_uuid_for_image)
+    cluster_uuid_for_image = img_ret['clusterUUID']
+    print("cluster_uuid_for_image is " + cluster_uuid_for_image)
 
-    customer_vdc_uuid = get_first_vdc_in_cluster(auth_client, cluster_uuid_for_image)
-    if (isVerbose):
-        print("The VDC to use is: " + customer_vdc_uuid)
+    customer_vdc_uuid = get_first_vdc_in_cluster(auth, cluster_uuid_for_image)
+    #if (isVerbose):
+    print("The VDC to use is: " + customer_vdc_uuid)
     
     # Setup VDC in this cluster if user doesn't have one
     if (customer_vdc_uuid == ''):
-        vdc_uuid = create_vdc_in_cluster(auth_client, cluster_uuid_for_image)
+        vdc_uuid = create_vdc_in_cluster(auth, cluster_uuid_for_image)
         if (isVerbose):
             print("VDC we created is " + vdc_uuid)
         customer_vdc_uuid = vdc_uuid
-        
-    product_offer = 'Standard Server'
+
+    # Sanity check that we have a VDC to work with
+    if (customer_vdc_uuid == ''):
+       raise Exceptions.ExecutionException("No VDC to create the server in !")
+            
     current_time = time.strftime("%Y-%m-%d %H:%M:%S") 
     server_name = "Server " + current_time
-    disk_product_offer = "Standard Disk"
 
     # Get the Product Offer UUID of the Standard Server product
     product_offer = 'Standard Server'
-    server_po_uuid = get_prod_offer_uuid(auth_client, product_offer)
+    server_po_uuid = get_prod_offer_uuid(auth, product_offer)
     if (server_po_uuid == ""):
         raise Exceptions.ExecutionException("No '" + product_offer + "' Product Offer found")
 
     # Base the boot disk on the PO of the same size storage disk as the Image must have been; that way
     # we can be reasonably sure it will exist. 
-    image_disk_po_name = str(img_ret.list[0].size) + " GB Storage Disk"
-    boot_disk_po_uuid = get_prod_offer_uuid(auth_client, image_disk_po_name)
+    image_disk_po_name = str(img_ret['size']) + " GB Storage Disk"
+    boot_disk_po_uuid = get_prod_offer_uuid(auth, image_disk_po_name)
     if (boot_disk_po_uuid == ""):
         raise Exceptions.ExecutionException("No suitable disk product offer found  (expected a '" + image_disk_po_name + "' PO)")
 
@@ -594,15 +317,11 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
     extra_disk_uuid = ""
     if (int(extra_disk_size) > 0):
         print("Creating additional volatile disk")
-        extra_disk_uuid = create_disk(auth_client,'Standard Disk', extra_disk_size, disk_name, customer_vdc_uuid)
+        extra_disk_uuid = create_disk(auth, 'Standard Disk', extra_disk_size, disk_name, customer_vdc_uuid)
 
      
-    # Create boot disk 
-    #disk_name = server_name + " - Boot Disk"
-    #boot_disk_size = img_ret.list[0].size
-    #disk_uuid = create_disk(auth_client, disk_product_offer, boot_disk_size, disk_name, customer_vdc_uuid)
-    
-    server_data = build_server(auth_client=auth_client, customer_uuid=customerUUID, image_uuid=image_uuid,
+    server_data = build_server(auth_parms=auth, customer_uuid=customerUUID, 
+                               image_uuid=image_uuid,
                                vdc_uuid=customer_vdc_uuid, 
                                server_po_uuid=server_po_uuid, boot_disk_po_uuid=boot_disk_po_uuid,
                                server_name=server_name, 
@@ -620,9 +339,9 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
 
     # If we created an extra disk, attach it now
     if (extra_disk_uuid != ""):
-        auth_client.service.attachDisk(serverUUID=server_data[0], diskUUID=extra_disk_uuid)
+        attach_disk(auth_parms=auth, server_uuid=server_data[0], disk_uuid=extra_disk_uuid, index='2')
         
-    server_data = start_server(auth_client, server_data)
+    server_data = start_server(auth_parms=auth, server_data=server_data)
 
     # This is the string that SlipStream picks up to let it know that the launch has been
     # successful. Don't change it unless you also amend FCOConnector. The statement below will
@@ -637,10 +356,6 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
         print("server_data[3]=" + server_data[3]);
 
     # ret = "Server UUID and IP:"  +  ':'.join(server_data)
-
-    # bodge to remove the (unused) disk we seem to have to have created
-    #print "Cleaning up disk" + disk_uuid
-    #auth_client.service.deleteResource(resourceUUID=disk_uuid, cascade=False)
 
     ret = dict(server_uuid=server_data[0],
              ip=server_data[3],
@@ -700,6 +415,16 @@ if __name__ == "__main__":
 
     isVerbose = cmdargs.isVerbose
 
+    if (isVerbose):
+        # We can turn on debugging by explicitly importing http_client and setting it's debug level
+        try:
+            import http.client as http_client
+        except ImportError:
+        # Python 2
+            import httplib as http_client
+
+        http_client.HTTPConnection.debuglevel = 1
+
     ret = MakeVM(cmdargs.imageId[0],
                cmdargs.customerUUID[0],
                cmdargs.customerUsername[0],
@@ -713,11 +438,11 @@ if __name__ == "__main__":
                isVerbose,
                cmdargs.contextScript[0])
 
-    print "FCOMakeOrchestrator(): ret is" + str(ret)
-    out = "Server UUID and IP:" + ret['server_uuid']
-    out = out + ":" + ret['password']
-    out = out + ":" + ret['login']
-    out = out + ":" + ret['ip']
-    print out
+    #print "FCOMakeOrchestrator(): ret is" + str(ret)
+    #out = "Server UUID and IP:" + ret['server_uuid']
+    #out = out + ":" + ret['password']
+    #out = out + ":" + ret['login']
+    #out = out + ":" + ret['ip']
+    #print out
 
 
