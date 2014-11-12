@@ -136,11 +136,17 @@ def build_server(auth_parms, customer_uuid, image_uuid, vdc_uuid, server_po_uuid
     server_uuid = create_server_job['itemUUID']
     print "--- createServer done with UUID " + server_uuid + " -----"
 
+    
     print("public_key = " + public_key)
-    add_ret = AddKey(auth_parms, server_uuid, customer_uuid, public_key)
-    print("== AddKey Result ==")
-    print add_ret
-    print("====")
+    #
+    # The public_key arg might be a list of public keys, separated by cr/lf. So split
+    # the list and process each key individually
+    for single_key in public_key.splitlines():
+        print("Processing key: " + single_key)
+        add_ret = AddKey(auth_parms, server_uuid, customer_uuid, single_key)
+        print("== AddKey Result ==")
+        print add_ret
+        print("====")
                              
     wait_for_install(auth_parms, server_uuid=server_uuid)
 
