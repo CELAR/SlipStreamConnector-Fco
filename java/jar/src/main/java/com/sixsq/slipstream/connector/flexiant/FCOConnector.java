@@ -295,7 +295,7 @@ public class FCOConnector extends CliConnectorBase {
 				+ "/orchestrator.slipstream.log 2>&1 && chmod 0755 "
 				+ bootstrap + "; " + bootstrap + mode + " >> "
 				+ SLIPSTREAM_REPORT_DIR + "/orchestrator.slipstream.log 2>&1\""
-				+ "\neval ${SCRIPT_EXEC}";
+				+ "\neval ${SCRIPT_EXEC}\n\n";
 	}
 
 	private String constructInstallDependenciesCommand() throws ConfigurationException {
