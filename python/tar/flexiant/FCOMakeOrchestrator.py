@@ -419,15 +419,15 @@ if __name__ == "__main__":
 
     isVerbose = cmdargs.isVerbose
 
-    if (isVerbose):
-        # We can turn on debugging by explicitly importing http_client and setting it's debug level
-        try:
-            import http.client as http_client
-        except ImportError:
-        # Python 2
-            import httplib as http_client
-
-        http_client.HTTPConnection.debuglevel = 1
+    #if (isVerbose):
+    #    # We can turn on debugging by explicitly importing http_client and setting it's debug level
+    #    try:
+    #        import http.client as http_client
+    #    except ImportError:
+    #    # Python 2
+    #        import httplib as http_client
+    #
+    #    http_client.HTTPConnection.debuglevel = 1
 
     ret = MakeVM(cmdargs.imageId[0],
                cmdargs.customerUUID[0],
