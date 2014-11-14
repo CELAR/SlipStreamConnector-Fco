@@ -198,7 +198,7 @@ def list_image(auth_params, uuid):
     result_set = rest_list_resource(auth_params, "image", sf)
     
     if result_set['totalCount'] == 0:
-        raise Exceptions.ExecutionException("Image " + uuid + " not found or you do not have permissions to use it")
+        raise RuntimeError("Image " + uuid + " not found or you do not have permissions to use it")
  
     print("==== Image Result ====")
     print result_set
