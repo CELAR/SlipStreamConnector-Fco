@@ -492,6 +492,32 @@ public class FCOConnector extends CliConnectorBase {
 		return args;
 	}
 
+	private void validateRAMAndCPU(String ramMb, String cpuCount) throws ValidationException
+	{
+		if (ramMb == null){
+			throw new ValidationException("No value configured for RAM");
+		}
+
+		if (cpuCount == null){
+			throw new ValidationException("No value configured for CPU count");
+		}
+
+		try{
+			Integer.parseInt(ramMb);
+		}
+		catch (NumberFormatException e){
+			throw new ValidationException("The value configured for RAM is not a valid number");
+		}
+
+		try{
+			Integer.parseInt(cpuCount);
+		}
+		catch (NumberFormatException e){
+			throw new ValidationException("The value configured for cpu Count is not a valid number");
+		}
+
+	}
+
 	private String getRunInstanceCommand(Run run, User user)
 			throws InvalidElementException, ValidationException, AbortException,
 			SlipStreamClientException, IOException, ConfigurationException,
@@ -562,6 +588,8 @@ public class FCOConnector extends CliConnectorBase {
             	log.info("CPU from Deployment image is: " + cpuCount);
             }
 		}
+
+		validateRAMAndCPU(ramMb, cpuCount);
 
 		// Force the Orchestrator machine to be 4Gb / 4CPU
 		if (run != null && isInOrchestrationContext(run)){
