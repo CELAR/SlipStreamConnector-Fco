@@ -236,7 +236,7 @@ def start_server(auth_parms, server_data):
     return server_data
 
 def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoint, networkType,
-           extra_disk_size, ramAmount, cpuCount, public_key, isVerbose=False, contextScript=None):
+           extra_disk_size, ramAmount, vmName, cpuCount, public_key, isVerbose=False, contextScript=None):
     """Main Function"""
 
     # Actually just defines the global variables now (since all config bits are passed on the command line)
@@ -300,7 +300,10 @@ def MakeVM(image_uuid, customerUUID, customerUsername, customerPassword, endpoin
        raise Exceptions.ExecutionException("No VDC to create the server in !")
             
     current_time = time.strftime("%Y-%m-%d %H:%M:%S") 
-    server_name = "Server " + current_time
+    if vmName == None:
+        server_name = "VM " + current_time
+    else:
+        server_name = vmName
 
     # Get the Product Offer UUID of the Standard Server product
     product_offer = 'Standard Server'
@@ -410,6 +413,9 @@ if __name__ == "__main__":
     parser.add_argument('--public-key', dest='publicKey', nargs='*',
                             help="SSH Public Key")
 
+    parser.add_argument('--vm-name', dest='vmName', nargs='*',
+                                help="What to call the VM")
+
     cmdargs = parser.parse_args()
 
     # print cmdargs.imageId
@@ -437,6 +443,7 @@ if __name__ == "__main__":
                cmdargs.networkType[0],
                cmdargs.diskSize[0],
                cmdargs.ramAmount[0],
+               cmdargs.vmName[0],
                cmdargs.cpuCount[0],
                cmdargs.publicKey[0],
                isVerbose,

@@ -37,6 +37,8 @@ class FlexiantClientCloud(BaseCloudConnector):
         self._set_capabilities(contextualization=True,
                                direct_ip_assignment=True,
                                orchestrator_can_kill_itself_or_its_vapp=True)
+#        cloudName = self.get_cloud_service_name()                               
+#        print("cloudName=" + cloudName)
 
     def _initialization(self, user_info):
         self.user_info = user_info
@@ -55,6 +57,7 @@ class FlexiantClientCloud(BaseCloudConnector):
     def _start_image_on_flexiant(self, user_info, node_instance, vm_name):
 
         self._print_detail("In _start_image_on_flexiant")
+#        print("get_cloud_service_name() reports: " + self.get_cloud_service_name())
         self._print_detail("user_info: " + str(user_info))
         self._print_detail("node_instance: " + str(node_instance))
 
@@ -93,6 +96,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 ip_type,
                 extra_disk_size,
                 ram,
+                instance_name,
                 cpu,
                 public_key,
                 self.verbose,
@@ -340,7 +344,7 @@ class FlexiantClientCloud(BaseCloudConnector):
     @staticmethod
     def _remove_bad_char_in_instance_name(name):
         try:
-            newname = re.sub(r'[^a-zA-Z0-9-]', '', name)
+            newname = re.sub(r'[^a-zA-Z0-9-]', '-', name)
             m = re.search('[a-zA-Z]([a-zA-Z0-9-]*[a-zA-Z0-9]+)?', newname)
             return m.string[m.start():m.end()]
         except:
