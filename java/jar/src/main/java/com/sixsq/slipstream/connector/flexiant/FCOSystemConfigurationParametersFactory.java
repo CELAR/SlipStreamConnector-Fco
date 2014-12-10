@@ -29,6 +29,8 @@ public class FCOSystemConfigurationParametersFactory extends
 		SystemConfigurationParametersFactoryBase {
 
 	private final static Logger log = Logger.getLogger(FCOSystemConfigurationParametersFactory.class.getName());
+    public final static String FCO_ORCHESTRATOR_CPU_CORES = "orchestrator.CPU_CORES";
+    public final static String FCO_ORCHESTRATOR_RAM       = "orchestrator.RAM";
 
 	public FCOSystemConfigurationParametersFactory(String connectorInstanceName)
 			throws ValidationException {
@@ -38,8 +40,6 @@ public class FCOSystemConfigurationParametersFactory extends
 	protected void initReferenceParameters() throws ValidationException {
 
 		super.initReferenceParameters();
-
-		log.info("In initReferenceParameters()");
 
 		// We just need an end-point, so can just use the inherited method instead of
 		// using putMandatoryParameter() explicitly
@@ -53,6 +53,12 @@ public class FCOSystemConfigurationParametersFactory extends
 //
 		putMandatoryParameter(constructKey("update.clienturl"),
 				"URL with the cloud client specific connector (Sys Config)");
+
+		putMandatoryParameter(constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_CPU_CORES),
+				"Number of CPU Cores for the Orchestrator VM");
+
+		putMandatoryParameter(constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_RAM),
+				"Number of GB RAM for the Orchestrator");
 //
 //		putMandatoryParameter(
 //				constructKey(FCOUserParametersFactory.SECURITY_GROUP_PARAMETER_NAME),

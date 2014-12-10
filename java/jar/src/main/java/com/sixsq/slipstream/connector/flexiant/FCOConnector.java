@@ -591,10 +591,11 @@ public class FCOConnector extends CliConnectorBase {
 
 		validateRAMAndCPU(ramMb, cpuCount);
 
-		// Force the Orchestrator machine to be 4Gb / 4CPU
+		// Get the configured values for the Orchestrator VM
 		if (run != null && isInOrchestrationContext(run)){
-			ramMb = "4096";
-			cpuCount = "4";
+			ramMb = getCloudParameterValue(user, FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_RAM);
+			cpuCount = getCloudParameterValue(user, FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_CPU_CORES);
+			log.info("Orchestrator will be " + ramMb + "MB, " + cpuCount + " cores.");
 		}
 
 		// Path needs to match that in python/rpm/pom.xml
