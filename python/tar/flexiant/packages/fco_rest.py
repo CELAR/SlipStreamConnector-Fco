@@ -10,6 +10,9 @@ def getToken(endpoint, username, cust_uuid, password):
     tokenPayload = {'automaticallyRenew':'True'}
     tokenRequest = requests.get(tokenURL, params=tokenPayload,
                                  auth=(apiUserName, password))
+    if not tokenRequest.ok:
+        raise Exception("Failed contacting %s with %s (%s)" % (
+            tokenURL, tokenRequest.reason, tokenRequest.status_code))
     token = tokenRequest.content
     tokenObj = json.loads(token)
     return tokenObj['publicToken']
