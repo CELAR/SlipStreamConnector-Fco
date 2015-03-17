@@ -10,6 +10,7 @@ from flexiant.ImageActions import ImageDisk
 from flexiant.VMActions import StopVM
 from flexiant.VMActions import WaitUntilVMRunning
 from slipstream.exceptions.Exceptions import CloudError, ExecutionException
+from flexiant.packages.fco_rest import list_servers
 
 
 def getConnector(configHolder):
@@ -38,7 +39,7 @@ class FlexiantClientCloud(BaseCloudConnector):
 #        cloudName = self.get_cloud_service_name()
 #        print("cloudName=" + cloudName)
 
-    def _initialization(self, user_info):
+    def _initialization(self, user_info, **kwargs):
         self.user_info = user_info
 
         # if self.is_deployment():
@@ -108,6 +109,7 @@ class FlexiantClientCloud(BaseCloudConnector):
             instance=ret['server_uuid'],
             ip=ret['ip'],
             id=ret['server_uuid'],
+            resourceUUID=ret['server_uuid'],
             password=ret['password'],
             login=ret['login'])
 
@@ -175,7 +177,12 @@ class FlexiantClientCloud(BaseCloudConnector):
         return vm['ip']
 
     def _vm_get_id(self, vm):
-        return vm['id']
+        # Allow to work with the local VM representation as well as with the
+        # server object (as returned by API).
+        return vm.get('id', vm['resourceUUID'])
+
+    def _vm_get_state(self, vm):
+        return vm['status']
 
     def _wait_vm_in_state_running_or_timeout(self, vm_id):
         self._wait_vm_in_state_or_timeout(vm_id, 'RUNNING',
@@ -321,9 +328,12 @@ class FlexiantClientCloud(BaseCloudConnector):
 
         print("waitUntilVMRunning(): VM is UP")
 
-    def listInstances(self):
-        # FIXME: implement if needed.
-        raise NotImplementedError()
+    def list_instances(self):
+        servers = list_servers(self.user_info.get_cloud_endpoint(),
+                               self.user_info.get_cloud_username(),
+                               self.user_info.get_cloud('user.uuid'),
+                               self.user_info.get_cloud_password())
+        return servers
 
     #
     # Helper methods

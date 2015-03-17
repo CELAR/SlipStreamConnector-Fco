@@ -17,7 +17,6 @@ def getToken(endpoint, username, cust_uuid, password):
     tokenObj = json.loads(token)
     return tokenObj['publicToken']
 
-
 def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uuid, nic_count):
 
     createURL = auth_parms['endpoint'] + "rest/user/current/resources/nic"
@@ -804,3 +803,26 @@ def change_server_status(auth_parms, server_uuid, state):
         print "server status changed ok, server uuid: " + server_uuid
     return server_result
 
+
+def list_servers(endpoint, username, cust_uuid, password):
+    """Returns list of server objects (dictionaries).
+    endpoint : API base URL.
+    """
+    token = getToken(endpoint, username, cust_uuid, password)
+    servers = _list_servers(endpoint, token)
+    return servers['list']
+
+
+def _list_servers(endpoint, token):
+    listURL = endpoint + "rest/user/current/resources/server/list"
+    queryLimit = {"from": 0,
+                  "to": 200,
+                  "maxRecords": 200,
+                  "loadChildren": False}
+    payload_as_string = json.JSONEncoder().encode({"queryLimit": queryLimit})
+    headers = {'content-type': 'application/json'}
+    res = requests.get(listURL, data=payload_as_string, auth=(token, ''), headers=headers)
+    if res.status_code == requests.codes.ok:
+        return json.loads(res.content)
+    else:
+        raise RuntimeError("Error - HTTP status code: " + str(res.status_code))
