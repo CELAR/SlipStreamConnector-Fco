@@ -1,8 +1,11 @@
+import logging
 import requests
 import json
 import time
 
+logging.getLogger("requests").setLevel(logging.WARNING)
 isVerbose = False
+
 
 def getToken(endpoint, username, cust_uuid, password):
     tokenURL = "%srest/user/current/authentication" % endpoint
