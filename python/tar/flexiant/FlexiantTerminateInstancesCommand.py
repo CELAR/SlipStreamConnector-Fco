@@ -1,4 +1,3 @@
-
 from slipstream.command.TerminateInstancesCommand import TerminateInstancesCommand
 from flexiant.FlexiantCommand import FlexiantCommand
 from flexiant.FlexiantClientCloud import FlexiantClientCloud

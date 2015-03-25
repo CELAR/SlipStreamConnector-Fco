@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from slipstream.command.RunInstancesCommand import RunInstancesCommand
 from flexiant.FlexiantCommand import FlexiantCommand
 from flexiant.FlexiantClientCloud import FlexiantClientCloud
