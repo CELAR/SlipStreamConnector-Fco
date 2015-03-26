@@ -91,94 +91,31 @@ public class FCOConnector extends CliConnectorBase {
     protected Map<String, String> getConnectorSpecificLaunchParams(Run run, User user) throws ConfigurationException,
             ValidationException {
 		Map<String, String> instanceSize = new HashMap<String, String>();
-		ImageModule image = ImageModule.load(run.getModuleResourceUrl());
-		instanceSize.put("cpu", getCpu(image));
-		instanceSize.put("ram", getRam(image));
+		instanceSize.put("cpu", getInstanceCpu(run));
+		instanceSize.put("ram", getInstanceRam(run));
 		return instanceSize;
     }
 
-//	private String createContextualizationData(Run run, User user)
-//			throws ConfigurationException, InvalidElementException,
-//			ValidationException {
-//
-//		if (run != null){
-//			log.info("Orchestartion Context: " + isInOrchestrationContext(run));
-//		}
-//
-//		String cookie = getCookieForEnvironmentVariable(user.getName(), run.getUuid());
-//
-//		Configuration configuration = Configuration.getInstance();
-//
-//		String verbosityLevel = getVerboseParameterValue(user);
-//
-//		String nodename = Run.MACHINE_NAME;
-//        if(isInOrchestrationContext(run)){
-//        	nodename = getOrchestratorName(run);
-//        }
-//
-//		String sepChar = "\n";
-//
-//        String contextualization ="#!/bin/sh" + sepChar;
-//
-//
-//		contextualization += "export SLIPSTREAM_DIID=" + run.getName() + sepChar;
-//		contextualization += "export SLIPSTREAM_SERVICEURL=" + configuration.baseUrl
-//				+ sepChar;
-//		contextualization += "export SLIPSTREAM_NODENAME=" + nodename
-//				+ sepChar;
-//		contextualization += "export SLIPSTREAM_CATEGORY="
-//				+ run.getCategory().toString() + sepChar;
-//		contextualization += "export SLIPSTREAM_USERNAME=" + user.getName() + sepChar;
-//
-//		contextualization += "export SLIPSTREAM_COOKIE=" + cookie + sepChar;
-//
-//		contextualization += "export SLIPSTREAM_VERBOSITY_LEVEL=" + verbosityLevel
-//				+ sepChar;
-//		contextualization += "export SLIPSTREAM_CLOUD=" + getCloudServiceName() + sepChar;
-//		contextualization += "export SLIPSTREAM_CONNECTOR_INSTANCE="
-//				+ getConnectorInstanceName() + sepChar;
-//
-//		contextualization += "export SLIPSTREAM_BUNDLE_URL="
-//				+ configuration.getRequiredProperty("slipstream.update.clienturl")
-//				+ sepChar;
-//
-//		contextualization += "export CLOUDCONNECTOR_BUNDLE_URL="
-//				+ configuration
-//						.getRequiredProperty(constructKey("update.clienturl"))
-//				+ sepChar;
-//
-//		contextualization += "export CLOUDCONNECTOR_PYTHON_MODULENAME="
-//				+ CLOUDCONNECTOR_PYTHON_MODULENAME + sepChar;
-//
-//		contextualization += "export SLIPSTREAM_BOOTSTRAP_BIN="
-//				+ configuration
-//						.getRequiredProperty("slipstream.update.clientbootstrapurl")
-//				+ sepChar;
-//
-//		contextualization += "export SLIPSTREAM_REPORT_DIR=" + SLIPSTREAM_REPORT_DIR;
-//
-//		contextualization += sepChar + constructInstallDependenciesCommand();
-//		String base64ContextScript=DatatypeConverter.printBase64Binary(contextualization.getBytes());
-//
-//		String xmlSafecontextualization = "'<celar-code><![CDATA[" +
-//											"echo " + base64ContextScript +
-//											"|base64 -d |tee /tmp/fco-script2.sh" + "\n" +
-//											"chmod 700 /tmp/fco-script2.sh\n" +
-//											"/tmp/fco-script2.sh\n" +
-//											"]]></celar-code>'";
-//		return xmlSafecontextualization;
-//
-//	}
-//
-//	private String constructInstallDependenciesCommand() throws ConfigurationException {
-//
-//		String log = "/tmp/slipstream_deps_$$.log";
-//
-//		return "INSTALL_EXEC=\"test -x /usr/bin/apt-get  && "
-//				+ "apt-get update " + " >" + log + " 2>&1"
-//				+ " && apt-get -y install python-suds python-requests "  + " >" + log + " 2>&1\""
-//				+ "\neval ${INSTALL_EXEC}";
-//	}
+	private String getInstanceRam(Run run) throws ValidationException {
+		return (isInOrchestrationContext(run)) ?
+				getOrchestratorRam() : getRam(ImageModule.load(run.getModuleResourceUrl()));
+	}
+
+	private String getInstanceCpu(Run run) throws ValidationException {
+		return (isInOrchestrationContext(run)) ?
+				getOrchestratorCpu() : getCpu(ImageModule.load(run.getModuleResourceUrl()));
+	}
+
+
+	private String getOrchestratorRam() throws ConfigurationException, ValidationException {
+		return Configuration.getInstance().getRequiredProperty(
+		        constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_RAM));
+	}
+
+	private String getOrchestratorCpu() throws ConfigurationException, ValidationException {
+		return Configuration.getInstance().getRequiredProperty(
+		        constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_CPU_CORES));
+	}
 
 	protected void validateBaseParameters(User user) throws ValidationException {
 		String errorMessageLastPart = ". Please contact your SlipStream administrator.";
@@ -189,12 +126,6 @@ public class FCOConnector extends CliConnectorBase {
 		}
 
 		// Do we need to check the FCO UUID is set here ?
-	}
-
-	protected String getInstanceType(Run run, User user) throws ValidationException{
-		return (isInOrchestrationContext(run)) ?
-				user.getParameter(constructKey(FCOUserParametersFactory.ORCHESTRATOR_INSTANCE_TYPE_PARAMETER_NAME)).getValue() :
-				getInstanceType( ImageModule.load(run.getModuleResourceUrl()) );
 	}
 
 	protected String getCustomerUUID(User user) throws ValidationException{
