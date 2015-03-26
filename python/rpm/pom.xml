@@ -43,6 +43,7 @@
 								</artifactItem>
 							</artifactItems>
 							<stripVersion>true</stripVersion>
+                            <outputDirectory>${project.build.directory}/dependency/flexiant</outputDirectory>
 						</configuration>
 					</execution>
 
@@ -66,8 +67,10 @@
                 <argument>-zcf</argument>
                 <argument>${project.build.directory}/flexiantclient.tgz</argument>
                 <argument>-C</argument>
-                <argument>${project.build.directory}/dependency</argument>
+                <argument>${project.build.directory}/dependency/flexiant</argument>
                 <argument>flexiant</argument>
+                <argument>requests</argument>
+                <argument>suds</argument>
               </arguments>
             </configuration>
           </execution>
