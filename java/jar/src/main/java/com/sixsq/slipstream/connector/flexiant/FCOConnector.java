@@ -21,12 +21,12 @@ package com.sixsq.slipstream.connector.flexiant;
  */
 
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.xml.bind.DatatypeConverter;
@@ -37,319 +37,84 @@ import com.sixsq.slipstream.connector.Connector;
 import com.sixsq.slipstream.credentials.Credentials;
 import com.sixsq.slipstream.exceptions.ConfigurationException;
 import com.sixsq.slipstream.exceptions.InvalidElementException;
-import com.sixsq.slipstream.exceptions.ProcessException;
-import com.sixsq.slipstream.exceptions.NotFoundException;
-import com.sixsq.slipstream.exceptions.AbortException;
-import com.sixsq.slipstream.exceptions.ServerExecutionEnginePluginException;
-import com.sixsq.slipstream.exceptions.SlipStreamClientException;
-import com.sixsq.slipstream.exceptions.SlipStreamException;
-import com.sixsq.slipstream.exceptions.SlipStreamInternalException;
 import com.sixsq.slipstream.exceptions.ValidationException;
-import com.sixsq.slipstream.persistence.DeploymentModule;
-import com.sixsq.slipstream.persistence.ExtraDisk;
 import com.sixsq.slipstream.persistence.ImageModule;
-import com.sixsq.slipstream.persistence.Module;
-import com.sixsq.slipstream.persistence.ModuleCategory;
 import com.sixsq.slipstream.persistence.ModuleParameter;
-import com.sixsq.slipstream.persistence.Node;
 import com.sixsq.slipstream.persistence.Run;
-import com.sixsq.slipstream.persistence.RunType;
 import com.sixsq.slipstream.persistence.ServiceConfigurationParameter;
 import com.sixsq.slipstream.persistence.User;
 import com.sixsq.slipstream.persistence.UserParameter;
-import com.sixsq.slipstream.util.ProcessUtils;
 
 /*
 
  */
 public class FCOConnector extends CliConnectorBase {
 
-	// The name of the cloud service.
-	public static final String CLOUD_SERVICE_NAME = "flexiant";
-	// So we can see what is going on
 	private final static Logger log = Logger.getLogger(FCOConnector.class.getName());
 
-	private final static String INSTALL_PATH = "/opt/slipstream/connectors/bin";
-
-	/**
-	 * Python module with the corresponding client cloud connector. This should
-	 * be set as CLOUDCONNECTOR_PYTHON_MODULENAME environment variable when
-	 * provisioning the Orchestrator VM in launch() method. See OpenStackConnector
-	 * and StratusLabConnector connectors.
-	 */
-	//public static final String CLOUDCONNECTOR_PYTHON_MODULENAME = "slipstream.cloudconnectors.flexiant.FlexiantClientCloud";
+	public static final String CLOUD_SERVICE_NAME = "flexiant";
 	public static final String CLOUDCONNECTOR_PYTHON_MODULENAME = "flexiant.FlexiantClientCloud";
 
 	public FCOConnector() {
-		//super(CLOUD_SERVICE_NAME);
 		this(CLOUD_SERVICE_NAME);
 	}
 
 	public FCOConnector(String instanceName) {
-		super(instanceName);
-		log.info("FCOConnector(" + instanceName + ")");
+		super(instanceName != null ? instanceName : CLOUD_SERVICE_NAME);
 	}
 
 	public Connector copy(){
 		return new FCOConnector(getConnectorInstanceName());
 	}
 
+	@Override
 	public String getCloudServiceName() {
 		return CLOUD_SERVICE_NAME;
 	}
-	/**
-	 * The implementation flow is usually as follows
-	 *  - initialize cloud driver
-	 *  - launch Orchestrator VM
-	 *  - get cloud ID and IP of the Orchestrator VM
-	 *  - update Run with the Orchestrator cloud ID and IP
-	 *
-	 * See OpenStackConnector and StratusLabConnector connector classes for the
-	 * implementation hints.
-	 *
-	 * @param run
-	 *            for which corresponding virtual machines must be launched
-	 * @param user
-	 *            owner of the run
-	 * @throws SlipStreamException
-	 */
-	public Run launch(Run run, User user) throws SlipStreamException {
 
-		if (run != null){
-			log.info("Run.description:" + run.getDescription());
-			log.info("Run.Name:" + run.getName());
-		}
 
-		validate(run, user);
+	@Override
+    protected String getCloudConnectorPythonModule() {
+		return CLOUDCONNECTOR_PYTHON_MODULENAME;
+    }
 
-		String command;
-		try {
-			command = getRunInstanceCommand(run, user);
-		} catch (IOException e) {
-			throw (new SlipStreamException(
-					"Failed getting run instance command", e));
-		}
-		log.info("Command is: " + command);
+	@Override
+    protected Map<String, String> getConnectorSpecificUserParams(User user) throws ConfigurationException,
+            ValidationException {
+		Map<String, String> userParams = new HashMap<String, String>();
+		userParams.put("endpoint", getEndpoint(user));
+		userParams.put("user.uuid", getCustomerUUID(user));
+		return userParams;
+    }
 
-		String result;
-		String[] commands = { "sh", "-c", command };
-		try {
-			result = ProcessUtils.execGetOutput(commands, false);
-			log.info("execGetOutput returned: " + result);
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw (new SlipStreamInternalException(e));
-		} catch (ProcessException e) {
-			try {
-				String[] instanceData = parseRunInstanceResult(e.getStdOut());
-				updateInstanceIdAndIpOnRun(run, instanceData[0], instanceData[1]);
-			}
-			catch (Exception ex) {
-				e.printStackTrace();
-			}
-			throw e;
-		} finally {
-			deleteTempSshKeyFile();
-		}
+	@Override
+    protected Map<String, String> getConnectorSpecificLaunchParams(Run run, User user) throws ConfigurationException,
+            ValidationException {
+		Map<String, String> instanceSize = new HashMap<String, String>();
+		instanceSize.put("cpu", getInstanceCpu(run));
+		instanceSize.put("ram", getInstanceRam(run));
+		return instanceSize;
+    }
 
-		// On success, the startup script (is expected to) spit out
-		// just a UUID and it's IP address. We return just a bit more than
-		// that so pull out the bits we need
-		log.info("Launch gave us back: " + result);
-
-		String[] instanceData = parseRunInstanceResult(result);
-
-		log.info("instanceData: " + instanceData[0] + " " + instanceData[1]);
-
-		updateInstanceIdAndIpOnRun(run,
-								   instanceData[0],		// instance UUID
-								   instanceData[1]		// ipAddress
-								   );
-
-//		log.info("instanceData: updated");
-		return run;
+	private String getInstanceRam(Run run) throws ValidationException {
+		return (isInOrchestrationContext(run)) ?
+				getOrchestratorRam() : getRam(ImageModule.load(run.getModuleResourceUrl()));
 	}
 
-	public void terminate(Run run, User user) throws SlipStreamException {
-
-		log.info("Terminating all FCO instances.");
-
-		String command = INSTALL_PATH + "/destroy-vm.py "
-						+ getRequiredParams(user)
-						;
-		// 	Need to check what getCloudNodeInstanceIds() returns for FCO with multiple VMs
-		for (String id : getCloudNodeInstanceIds(run)) {
-			String[] commands = { "sh", "-c", command + " --server-uuid " + id };
-			log.info("kill uuid " + id);
-			try {
-				ProcessUtils.execGetOutput(commands);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+	private String getInstanceCpu(Run run) throws ValidationException {
+		return (isInOrchestrationContext(run)) ?
+				getOrchestratorCpu() : getCpu(ImageModule.load(run.getModuleResourceUrl()));
 	}
 
-	private String createContextualizationData(Run run, User user)
-			throws ConfigurationException, InvalidElementException,
-			ValidationException {
 
-		if (run != null){
-			log.info("Orchestartion Context: " + isInOrchestrationContext(run));
-		}
-
-		String cookie = getCookieForEnvironmentVariable(user.getName(), run.getUuid());
-
-		Configuration configuration = Configuration.getInstance();
-
-		String verbosityLevel = getVerboseParameterValue(user);
-
-		String nodename = Run.MACHINE_NAME;
-        if(isInOrchestrationContext(run)){
-        	nodename = getOrchestratorName(run);
-        }
-
-
-
-		// Context string needs to be wrapped in CDATA[] to get it past Jade validation, and
-		// the whole thing needs to be single-quoted to stop the shell trying to interpret
-		// parts of the data too....
-		String sepChar = "\n";
-
-        //String contextualization ="'";
-        String contextualization ="#!/bin/sh" + sepChar;
-		//contextualization += "<celar-code><![CDATA[";
-
-
-		contextualization += "export SLIPSTREAM_DIID=" + run.getName() + sepChar;
-		contextualization += "export SLIPSTREAM_SERVICEURL=" + configuration.baseUrl
-				+ sepChar;
-		contextualization += "export SLIPSTREAM_NODENAME=" + nodename
-				+ sepChar;
-		contextualization += "export SLIPSTREAM_CATEGORY="
-				+ run.getCategory().toString() + sepChar;
-		contextualization += "export SLIPSTREAM_USERNAME=" + user.getName() + sepChar;
-
-		contextualization += "export SLIPSTREAM_COOKIE=" + cookie + sepChar;
-
-		contextualization += "export SLIPSTREAM_VERBOSITY_LEVEL=" + verbosityLevel
-				+ sepChar;
-		contextualization += "export SLIPSTREAM_CLOUD=" + getCloudServiceName() + sepChar;
-		contextualization += "export SLIPSTREAM_CONNECTOR_INSTANCE="
-				+ getConnectorInstanceName() + sepChar;
-
-		contextualization += "export SLIPSTREAM_BUNDLE_URL="
-				+ configuration.getRequiredProperty("slipstream.update.clienturl")
-				+ sepChar;
-
-		contextualization += "export CLOUDCONNECTOR_BUNDLE_URL="
-				+ configuration
-						.getRequiredProperty(constructKey("update.clienturl"))
-				+ sepChar;
-
-		contextualization += "export CLOUDCONNECTOR_PYTHON_MODULENAME="
-				+ CLOUDCONNECTOR_PYTHON_MODULENAME + sepChar;
-
-		contextualization += "export SLIPSTREAM_BOOTSTRAP_BIN="
-				+ configuration
-						.getRequiredProperty("slipstream.update.clientbootstrapurl")
-				+ sepChar;
-
-		contextualization += "export SLIPSTREAM_REPORT_DIR=" + SLIPSTREAM_REPORT_DIR;
-
-		contextualization += sepChar + constructInstallDependenciesCommand();
-		contextualization += sepChar + constructScriptExecCommand(run);
-		//contextualization += "]]></celar-code>";	// Close <!CData[[...
-		//contextualization += "'";					// Close single quotes we've wrapped around the entire context script
-		//String base64ContextScript=encodeToBase64(contextualization);
-		String base64ContextScript=DatatypeConverter.printBase64Binary(contextualization.getBytes());
-
-		//String xmlSafecontextualization = contextualization.replaceAll("&","&amp;");
-		//log.info("Contextulization is:" + xmlSafecontextualization);
-
-		String xmlSafecontextualization = "'<celar-code><![CDATA[" +
-											"echo " + base64ContextScript +
-											"|base64 -d |tee /tmp/fco-script2.sh" + "\n" +
-											"chmod 700 /tmp/fco-script2.sh\n" +
-											"/tmp/fco-script2.sh\n" +
-											"]]></celar-code>'";
-		return xmlSafecontextualization;
-
+	private String getOrchestratorRam() throws ConfigurationException, ValidationException {
+		return Configuration.getInstance().getRequiredProperty(
+		        constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_RAM));
 	}
 
-	private String constructScriptExecCommand(Run run) throws ConfigurationException, ValidationException {
-
-		Configuration configuration = Configuration.getInstance();
-
-		String bootstrap = "/tmp/slipstream.bootstrap";
-		String bootstrapUrl = configuration
-				.getRequiredProperty("slipstream.update.clientbootstrapurl");
-
-		String mode = " ";
-        if(isInOrchestrationContext(run)){
-        	mode = " slipstream-orchestrator ";
-        }
-
-		return "SCRIPT_EXEC=\"sleep 15; mkdir -p " + SLIPSTREAM_REPORT_DIR
-				+ "; wget --no-check-certificate -O " + bootstrap + " "
-				+ bootstrapUrl + " > " + SLIPSTREAM_REPORT_DIR
-				+ "/orchestrator.slipstream.log 2>&1 && chmod 0755 "
-				+ bootstrap + "; " + bootstrap + mode + " >> "
-				+ SLIPSTREAM_REPORT_DIR + "/orchestrator.slipstream.log 2>&1\""
-				+ "\neval ${SCRIPT_EXEC}\n\n";
-	}
-
-	private String constructInstallDependenciesCommand() throws ConfigurationException {
-
-		String log = "/tmp/slipstream_deps_$$.log";
-
-		return "INSTALL_EXEC=\"test -x /usr/bin/apt-get  && "
-				+ "apt-get update " + " >" + log + " 2>&1"
-				+ " && apt-get -y install python-suds python-requests "  + " >" + log + " 2>&1\""
-				+ "\neval ${INSTALL_EXEC}";
-	}
-
-//	private String[] parseResult(String result)
-//			throws SlipStreamClientException {
-//
-//		final String completedMsg = "Server UUID and IP:";
-//
-//		log.info("parseResult: result is" + result);
-//
-//		if (result == null){
-//			throw (new SlipStreamClientException("Got null result for launch command"));
-//		}
-//
-//		int n = result.indexOf(completedMsg);
-//		log.info("parseReuslt: n is " + n);
-//
-//		if (n > -1){
-//			String res = result.substring(completedMsg.length()+n);
-//			log.info("parseResult(): " + res);
-//			String[] parts = res.trim().split(":");
-//
-//			// Should be four elements, as the substring() junked the "Server UUID..." part
-//			if (parts.length == 4){
-//				String[] answer = new String[2];
-//
-//				answer[0] = parts[0];	// Server UUID
-//				answer[1] = parts[3];	// Server IP
-//				log.info("Server UUID plus IP: " + answer[0] + " " + answer[1]);
-//				return answer;
-//			}
-//		}
-//
-//		// Assume it was an error if we didn't see the string that
-//		// tells us what the server UUID and IP were
-//
-//		throw (new SlipStreamClientException("Error returned by launch command. Got: " + result));
-//
-//	}
-
-	private void validate(Run run, User user) throws ValidationException, SlipStreamException {
-		validateCredentials(user);
-//		validateUserSshPublicKey(user);
-//		validateMarketplaceEndpoint(user);
-		validateLaunch(run, user);
+	private String getOrchestratorCpu() throws ConfigurationException, ValidationException {
+		return Configuration.getInstance().getRequiredProperty(
+		        constructKey(FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_CPU_CORES));
 	}
 
 	protected void validateBaseParameters(User user) throws ValidationException {
@@ -363,63 +128,14 @@ public class FCOConnector extends CliConnectorBase {
 		// Do we need to check the FCO UUID is set here ?
 	}
 
-	protected String getInstanceType(Run run, User user) throws ValidationException{
-		return (isInOrchestrationContext(run)) ?
-				user.getParameter(constructKey(FCOUserParametersFactory.ORCHESTRATOR_INSTANCE_TYPE_PARAMETER_NAME)).getValue() :
-				getInstanceType( ImageModule.load(run.getModuleResourceUrl()) );
-	}
-
 	protected String getCustomerUUID(User user) throws ValidationException{
-		String s = 	user.getParameter(constructKey(FCOUserParametersFactory.PARAM_CUSTOMER_UUID)).getValue();
-		return s;
+		return user.getParameter(constructKey(FCOUserParametersFactory.PARAM_CUSTOMER_UUID)).getValue();
 	}
 
-	private void validateLaunch(Run run, User user)
-			throws ConfigurationException, SlipStreamClientException, ServerExecutionEnginePluginException{
-		validateCredentials(user);
+	@Override
+    protected void validateLaunch(Run run, User user) throws ValidationException{
+		super.validateLaunch(run, user);
 		validateBaseParameters(user);
-
-		// Any more validation needed here ?
-	}
-
-	// This needs to invoke a script which lists ALL VMs for the customer and
-	// output them in the format:
-	//
-	// id         state       <- header line
-	// nnnn       STATE      <- nnnn=id (assume uuid), STATE=RUNNING/STOPPED etc
-	//
-	// Note the headee line - this is required as it will be stripped later
-	public Properties describeInstances(User user) throws SlipStreamException {
-
-		validateUserParams(user);
-
-		String command = INSTALL_PATH + "/fco-list-vms-for-customer.py "
-				+ getRequiredParams(user)
-				;
-
-		String result;
-		String[] commands = { "sh", "-c", command };
-
-		try {
-			result = ProcessUtils.execGetOutput(commands);
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw (new SlipStreamInternalException(e));
-		}
-
-		Properties p;
-		try{
-			p = parseDescribeInstanceResult(result);
-		}
-		catch (SlipStreamException e){
-			// So we can see if parseDescribeInstanceResult() fails
-			log.info("" + e.getLocalizedMessage());
-			throw(e);
-		}
-//		System.out.println("=== Properties being returned by FCOConnector =====");
-//		p.list(System.out);
-//		System.out.println("=== End Properties being returned by FCOConnector =====");
-		return p;
 	}
 
 	@Override
@@ -456,182 +172,65 @@ public class FCOConnector extends CliConnectorBase {
 				.getParameters();
 	}
 
-	protected String getNetworkType(Run run) throws ValidationException{
-		log.info("In getNetworkType()");
-		log.info("Run Type is " + run.getType());
-		if (isInOrchestrationContext(run)) {
-			log.info("Done getNetworkType() - return IP as isInOrchestrationContext() is true");
-			return "IP";	// Public Virtual IP
-		} else {
-			ImageModule machine = ImageModule.load(run.getModuleResourceUrl());
-			String s = machine.getParameterValue(ImageModule.NETWORK_KEY, null);
-			log.info("Done getNetworkType() with type " + s);
-			return s;
-		}
-	}
-
 	@Override
 	protected String constructKey(String key) throws ValidationException {
 		log.info("In constructKey()");
 		return new FCOUserParametersFactory(getConnectorInstanceName()).constructKey(key);
 	}
 
-	private String getVmName(Run run) {
-		return isInOrchestrationContext(run) ? getOrchestratorName(run)
-				: "vm";
+	@Override
+	protected String getCpu(ImageModule image) throws ValidationException {
+		String cpu = super.getCpu(image);
+		if (cpu == null || cpu.isEmpty()) {
+			throw new ValidationException("CPU value should be provided.");
+		} else {
+			checkConvertsToInt(cpu, "CPU");
+			return cpu;
+		}
 	}
 
-	private String getRequiredParams(User user) throws ValidationException
-	{
-		String args = " --cust-uuid " +  getCustomerUUID(user)
-					+ " --cust-username " +  getKey(user)
-					+ " --cust-password " + getSecret(user)
-					+ " --api-host " + getEndpoint(user)
-					+ " ";
-
-		return args;
+	@Override
+	protected String getRam(ImageModule image) throws ValidationException {
+		String ramGb = super.getRam(image);
+		if (ramGb == null || ramGb.isEmpty()) {
+			throw new ValidationException("RAM value should be provided.");
+		} else {
+			checkConvertsToInt(ramGb, "RAM");
+			return ramGb;
+		}
 	}
 
-	private void validateRAMAndCPU(String ramMb, String cpuCount) throws ValidationException
-	{
-		if (ramMb == null){
-			throw new ValidationException("No value configured for RAM");
+	private void checkConvertsToInt(String value, String name) throws ValidationException {
+		try {
+			Integer.parseInt(value);
+		} catch (NumberFormatException ex) {
+			throw new ValidationException(name + " should be integer.");
 		}
-
-		if (cpuCount == null){
-			throw new ValidationException("No value configured for CPU count");
-		}
-
-		try{
-			Integer.parseInt(ramMb);
-		}
-		catch (NumberFormatException e){
-			throw new ValidationException("The value configured for RAM is not a valid number");
-		}
-
-		try{
-			Integer.parseInt(cpuCount);
-		}
-		catch (NumberFormatException e){
-			throw new ValidationException("The value configured for cpu Count is not a valid number");
-		}
-
 	}
 
-	private String getRunInstanceCommand(Run run, User user)
-			throws InvalidElementException, ValidationException, AbortException,
-			SlipStreamClientException, IOException, ConfigurationException,
-			ServerExecutionEnginePluginException {
-
-		log.info("In getRunInstanceCommand()");
-
-		String context = createContextualizationData(run, user);
-		String publicSshKey = getPublicSshKey(run, user);
-		String imageId = getImageId(run, user);
-		String vmName = getVmName(run);
-		String ramMb = null;
-		String cpuCount = null;
-		ImageModule image = null;
-
-		log.info("Some Parameter Values:\n");
-		log.info("Mod Cat: " + run.getCategory());
-
-		String extraDiskName = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + "volatile";
-		String extraDiskSize = "0";
-		try{
-			extraDiskSize = run.getRuntimeParameterValue(extraDiskName);
-		}
-		catch (Exception e){
-			try{
-				log.info("Failed getting parameter as " + extraDiskName);
-				String param2 = Run.MACHINE_NAME_PREFIX + ImageModule.EXTRADISK_PARAM_PREFIX + ".volatile";
-				extraDiskSize = run.getRuntimeParameterValue(param2);
-				log.info("Got parameter of value " + extraDiskSize + " using key " + param2);
-			}
-			catch (Exception e2){
-				extraDiskSize = "0";
-			}
-		}
-
+    protected String getExtraDiskVolatile(ImageModule image) throws ValidationException {
+    	String extraDiskSize = super.getExtraDiskVolatile(image);
+    	if (extraDiskSize == null)  {
+    		extraDiskSize = "";
+    	}
 		// Disk Size must be one of the standard sizes
-		String validStandardSizes="20, 50, 100, 150, 250, 500, 750,";
-		if (extraDiskSize != null){
-			if (!(extraDiskSize.equals("0") ||
-					validStandardSizes.contains(extraDiskSize + ",") ||
-					extraDiskSize.equals("1000"))){
-				throw new ValidationException("Extra volatile disk size must be one of "
-						+ validStandardSizes + " or 1000");
-			}
+		List<String> validStandardSizes = new ArrayList<String>(Arrays.asList("20", "50", "100", "150", "250", "500", "750", "1000"));
+		if (!extraDiskSize.isEmpty() && !validStandardSizes.contains(extraDiskSize)) {
+			throw new ValidationException("Extra volatile disk size must be one of " + validStandardSizes);
 		}
-		else{
-			extraDiskSize = "0";
-		}
+        return extraDiskSize;
+    }
 
-		if (run.getCategory() == ModuleCategory.Image){
-			image = ImageModule.load(run.getModuleResourceUrl());
-			ramMb = getRam(image);
-			cpuCount = getCpu(image);
-			log.info("RAM from image is : " + ramMb);
-			log.info("CPU from image is : " + cpuCount);
-			log.info("Extra Disk Size is: " + extraDiskSize);
-			log.info("Extra Disk Name is: " + extraDiskName);
-		}
-		else if (run.getCategory() == ModuleCategory.Deployment){
-			Module module = run.getModule();
-
-            for (Node node : ((DeploymentModule) module).getNodes().values()){
-            	log.info("Node Description: " + node.getDescription());
-            	image = node.getImage();
-            	ramMb = getRam(image);
-            	cpuCount = getCpu(image);
-            	log.info("RAM from Deployment image is: " + ramMb);
-            	log.info("CPU from Deployment image is: " + cpuCount);
-            }
-		}
-
-		validateRAMAndCPU(ramMb, cpuCount);
-
-		// Get the configured values for the Orchestrator VM
-		if (run != null && isInOrchestrationContext(run)){
-			ramMb = getCloudParameterValue(user, FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_RAM);
-			cpuCount = getCloudParameterValue(user, FCOSystemConfigurationParametersFactory.FCO_ORCHESTRATOR_CPU_CORES);
-			log.info("Orchestrator will be " + ramMb + "MB, " + cpuCount + " cores.");
-		}
-
-		// Path needs to match that in python/rpm/pom.xml
-		return INSTALL_PATH + "/fco-run-instance "
-				+ getRequiredParams(user)
-				+ " --image-uuid " + imageId
-				+ " --network-type " + getNetworkType(run)
-//				+ " --quiet "
-				+ " --public-key '" + publicSshKey + "'"
-//  			+ " -u " + getKey(user)
-				+ " --context " + context
-				+ " --vm-name " + vmName + ":" + run.getName()
-				+ " --disk-size " + extraDiskSize
-				+ " --ram " + ramMb
-				+ " --cpu " + cpuCount
-				;
+	protected void validateUserCredentials(User user) throws ValidationException {
+		super.validateCredentials(user);
+		validateCustomerUUID(user);
 	}
 
-	protected void validateUserParams(User user) throws ValidationException {
-		String errorMessageLastPart = getErrorMessageLastPart(user);
-
-		if (user == null ){
-			throw (new ValidationException(
-					"Cloud User details cannot be null"
-							+ errorMessageLastPart));
-		}
-
-		if (getKey(user) == null) {
-			throw (new ValidationException(
-					"Cloud Username cannot be empty"
-							+ errorMessageLastPart));
-		}
-		if (getSecret(user) == null) {
-			throw (new ValidationException(
-					"Cloud Password cannot be empty"
-							+ errorMessageLastPart));
+	private void validateCustomerUUID(User user) throws ValidationException {
+		String customerUUID = getCustomerUUID(user);
+		if (customerUUID == null || customerUUID.isEmpty()) {
+			throw (new ValidationException("Customer UUID cannot be empty"
+							+ getErrorMessageLastPart(user)));
 		}
 	}
 

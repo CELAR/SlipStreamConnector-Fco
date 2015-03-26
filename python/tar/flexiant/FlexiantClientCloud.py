@@ -2,16 +2,15 @@ import re
 import time
 
 from slipstream.cloudconnectors.BaseCloudConnector import BaseCloudConnector
-from slipstream.NodeDecorator import RUN_CATEGORY_IMAGE, RUN_CATEGORY_DEPLOYMENT, \
-    KEY_RUN_CATEGORY
+from slipstream.NodeDecorator import KEY_RUN_CATEGORY
 from flexiant.FCOMakeOrchestrator import MakeVM
 from flexiant.FCODestroy import DestroyVM
 from flexiant.FCOListVM import ListVM
 from flexiant.ImageActions import ImageDisk
 from flexiant.VMActions import StopVM
 from flexiant.VMActions import WaitUntilVMRunning
-from slipstream.exceptions.Exceptions import CloudError, \
-    ExecutionException
+from slipstream.exceptions.Exceptions import CloudError, ExecutionException
+from flexiant.packages.fco_rest import list_servers
 
 
 def getConnector(configHolder):
@@ -37,16 +36,16 @@ class FlexiantClientCloud(BaseCloudConnector):
         self._set_capabilities(contextualization=True,
                                direct_ip_assignment=True,
                                orchestrator_can_kill_itself_or_its_vapp=True)
-#        cloudName = self.get_cloud_service_name()                               
+#        cloudName = self.get_cloud_service_name()
 #        print("cloudName=" + cloudName)
 
-    def _initialization(self, user_info):
+    def _initialization(self, user_info, **kwargs):
         self.user_info = user_info
 
-        #if self.is_deployment():
+        # if self.is_deployment():
         #    self._import_keypair(user_info)
-        #elif self.is_build_image():
-        #    self._create_keypair_and_set_on_user_info(user_info)        
+        # elif self.is_build_image():
+        #    self._create_keypair_and_set_on_user_info(user_info)
 
     def _finalization(self, user_info):
         pass
@@ -83,7 +82,7 @@ class FlexiantClientCloud(BaseCloudConnector):
             extra_disk_size = int(extra_disk_str)
         except:
             extra_disk_size = 0
-            
+
         self._print_detail("extra_disk_size: " + str(extra_disk_size))
 
         try:
@@ -110,6 +109,7 @@ class FlexiantClientCloud(BaseCloudConnector):
             instance=ret['server_uuid'],
             ip=ret['ip'],
             id=ret['server_uuid'],
+            resourceUUID=ret['server_uuid'],
             password=ret['password'],
             login=ret['login'])
 
@@ -132,14 +132,16 @@ class FlexiantClientCloud(BaseCloudConnector):
 #        user_info.set_private_key(kp.private_key)
 #        user_info.set_keypair_name(kp.name)
 #        return kp.name
-    
+
     def _get_cpu_and_ram(self, node_instance):
-        ram = node_instance.get_ram()
+        ram_GB = node_instance.get_ram()
         cpu = node_instance.get_cpu()
 
-        if ram is None:
+        if ram_GB is None:
             ram = '512'
             self._print_detail("Defaulting RAM to " + ram)
+        else:
+            ram = str(int(ram_GB) * 1024)
 
         if cpu is None:
             cpu = '1'
@@ -177,14 +179,19 @@ class FlexiantClientCloud(BaseCloudConnector):
         return vm['ip']
 
     def _vm_get_id(self, vm):
-        return vm['id']
+        # Allow to work with the local VM representation as well as with the
+        # server object (as returned by API).
+        return vm.get('id', vm['resourceUUID'])
+
+    def _vm_get_state(self, vm):
+        return vm['status']
 
     def _wait_vm_in_state_running_or_timeout(self, vm_id):
         self._wait_vm_in_state_or_timeout(vm_id, 'RUNNING',
                                           self.NODE_STARTUP_TIMEOUT)
 
     def _wait_vm_in_state_or_timeout(self, vm_id, state, timeout):
-        self._print_detail("Waiting %i sec for node %s to enter state '%s'." % \
+        self._print_detail("Waiting %i sec for node %s to enter state '%s'." %
                            (timeout, vm_id, state))
 
         vm_state = self._get_vm_state(vm_id)
@@ -216,32 +223,32 @@ class FlexiantClientCloud(BaseCloudConnector):
         # TODO: implement new image build.
         #
         # self._build_image_increment(user_info, node_instance, ip)
-        
-        #super(FlexiantClientCloud, self)._build_image()
+
+        # super(FlexiantClientCloud, self)._build_image()
         ret = self._buildImageOnFlexiant(user_info, node_instance)
         return ret
-        
+
     def _buildImageOnFlexiant(self, user_info, node_instance):
         print("_buildImageOnFlexiant:")
         print("=====================")
         print user_info
         print("----")
         print node_instance
-        
+
         machine_name = node_instance.get_name()
         vm = self._get_vm(machine_name)
 
         print("\n vm: %s \n" % str(vm))
         ip_address = vm['ip']
-        vm_uuid    = vm['id']
-        
-        # Username and password need to be copied to the node info dict 
-        #node_instance.set('Flexiant.user', vm['login'])
-        #node_instance.set('Flexiant.password', vm['password'])
-        
+        vm_uuid = vm['id']
+
+        # Username and password need to be copied to the node info dict
+        # node_instance.set('Flexiant.user', vm['login'])
+        # node_instance.set('Flexiant.password', vm['password'])
+
         print("node_instance is now:")
         print node_instance
-         
+
         print("_buildImageOnFlexiant(): ip_address=" + ip_address + ", uuid=" + vm_uuid)
 
         try:
@@ -254,28 +261,28 @@ class FlexiantClientCloud(BaseCloudConnector):
                 self.verbose)
         except Exception as ex:
             raise CloudError('VM %s did not make it to running state with: %s' % (vm_uuid, str(ex)))
-                
+
         print("_buildImageOnFlexiant(): VM is running")
 
         node_instance.set_image_attributes({'Flexiant.user': vm['login']})
-        node_instance.set_image_attributes({'Flexiant.password': vm['password']})            
-        
+        node_instance.set_image_attributes({'Flexiant.password': vm['password']})
+
         node_instance.set_image_attributes({'loginUser' : vm['login']})
         node_instance.set_image_attributes({'login.password' : vm['password']})
-        
+
         # Temporary bodge to set password on NodeInstance object in the correct
         # place for framework code to pick it up
         vm_password = vm['password']
         print("Passing password for VM: " + vm_password)
         node_instance._NodeInstance__set(node_instance.get_cloud() + '.login.password', vm_password)
-        
+
         print("node_instance before _build_image_increment() ")
         print node_instance
         print("--------")
-                
+
         # Now make the changes to the image
         self._build_image_increment(user_info, node_instance, ip_address)
-        
+
         # Stop the VM (needs to be stopped to image it)
         try:
             ret = StopVM(
@@ -287,7 +294,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 self.verbose)
         except Exception as ex:
             raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
-                
+
         # Image the VM's disk
         image_default_user = node_instance.get_username()
         try:
@@ -302,7 +309,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 self.verbose)
         except Exception as ex:
             raise CloudError('Failed to create image from disk of VM %s with: %s' % (vm_uuid, str(ex)))
-        
+
         print ("UUID of new image is " + ret.resourceUUID)
         print("end _buildImageOnFlexiant()")
 
@@ -314,18 +321,21 @@ class FlexiantClientCloud(BaseCloudConnector):
         state = ''
         while state != 'RUNNING':
             if time.time() > timeStop:
-                raise Exceptions.ExecutionException(
+                raise ExecutionException(
                      'Timed out while waiting for instance "%s" to reach running state'
                      % instanceId)
-            print("waitUntilVMRunning(): VMState is: " + state)      
+            print("waitUntilVMRunning(): VMState is: " + state)
             time.sleep(1)
-            state = _get_vm_state(self, instanceId)
-            
+            state = self._get_vm_state(instanceId)
+
         print("waitUntilVMRunning(): VM is UP")
-        
-    def listInstances(self):
-        # FIXME: implement if needed.
-        raise NotImplementedError()
+
+    def list_instances(self):
+        servers = list_servers(self.user_info.get_cloud_endpoint(),
+                               self.user_info.get_cloud_username(),
+                               self.user_info.get_cloud('user.uuid'),
+                               self.user_info.get_cloud_password())
+        return servers
 
     #
     # Helper methods

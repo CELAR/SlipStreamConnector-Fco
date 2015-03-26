@@ -75,8 +75,8 @@ class TestFlexiantClientCloud(unittest.TestCase):
         for i in range(1, self.multiplicity + 1):
             node_instance_name = node_name + '.' + str(i)
             self.node_instances[node_instance_name] = NodeInstance({
-                'nodename': node_name,
-                'name': node_instance_name,
+                NodeDecorator.NODE_NAME_KEY: node_name,
+                NodeDecorator.NODE_INSTANCE_NAME_KEY: node_instance_name,
                 'cloudservice': cn,
                 'image.description': 'This is a test image.',
                 'image.platform': self.ch.config[cn + '.image.platform'],
@@ -87,8 +87,8 @@ class TestFlexiantClientCloud(unittest.TestCase):
             })
 
         self.node_instance = NodeInstance({
-            'nodename': node_name,
-            'name': NodeDecorator.MACHINE_NAME,
+            NodeDecorator.NODE_NAME_KEY: NodeDecorator.MACHINE_NAME,
+            NodeDecorator.NODE_INSTANCE_NAME_KEY: NodeDecorator.MACHINE_NAME,
             'cloudservice': cn,
             'image.description': 'This is a test image.',
             'image.platform': self.ch.config[cn + '.image.platform'],

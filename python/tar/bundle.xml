@@ -10,11 +10,28 @@
 
   <fileSets>
     <fileSet>
-      <fileMode>555</fileMode>
       <includes>
-        <include>bin/fco-run-instance</include>
-        <include>flexiant/*.py</include>
-        <include>flexiant/packages/*.py</include>
+        <include>flexiant/**/*.py</include>
+      </includes>
+      <excludes>
+        <exclude>**/*.pyc</exclude>
+      </excludes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.build.directory}</directory>
+      <outputDirectory>.</outputDirectory>
+      <includes>
+        <include>suds/**/*</include>
+      </includes>
+      <excludes>
+        <exclude>**/*.pyc</exclude>
+      </excludes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.build.directory}</directory>
+      <outputDirectory>.</outputDirectory>
+      <includes>
+        <include>requests/**/*</include>
       </includes>
       <excludes>
         <exclude>**/*.pyc</exclude>

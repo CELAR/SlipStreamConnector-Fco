@@ -1,0 +1,8 @@
+#!/usr/bin/env python
+
+from slipstream.command.CloudClientCommand import main
+from flexiant.FlexiantTerminateInstancesCommand import FlexiantTerminateInstances
+
+
+if __name__ == "__main__":
+    main(FlexiantTerminateInstances)
