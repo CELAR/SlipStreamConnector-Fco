@@ -20,10 +20,8 @@ package com.sixsq.slipstream.connector.flexiant;
  * -=================================================================-
  */
 
-import java.util.logging.Logger;
-
-import com.sixsq.slipstream.credentials.Credentials;
 import com.sixsq.slipstream.connector.CredentialsBase;
+import com.sixsq.slipstream.credentials.Credentials;
 import com.sixsq.slipstream.exceptions.InvalidElementException;
 import com.sixsq.slipstream.exceptions.SlipStreamRuntimeException;
 import com.sixsq.slipstream.exceptions.ValidationException;
@@ -31,20 +29,14 @@ import com.sixsq.slipstream.persistence.User;
 
 public class FCOCredentials extends CredentialsBase implements Credentials {
 
-	private final static Logger log = Logger.getLogger(FCOCredentials.class.getName());
-
 	public FCOCredentials(User user, String connectorInstanceName) {
 		super(user);
-		log.info("In FCOCredentials()");
-		log.info("connectorInstanceName=" + connectorInstanceName==null?"NULL":connectorInstanceName );
-
 		try {
 			cloudParametersFactory = new FCOUserParametersFactory(connectorInstanceName);
 		} catch (ValidationException e) {
 			e.printStackTrace();
 			throw (new SlipStreamRuntimeException(e));
 		}
-		log.info("Done FCOCredentials()");
 	}
 
 	public String getKey() throws InvalidElementException {
