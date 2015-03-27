@@ -12,6 +12,9 @@
   <properties>
      <slipstream.version>2.6-SNAPSHOT</slipstream.version>
      <slipstream.base.dir>/opt/slipstream</slipstream.base.dir>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+     <BUILD_NUMBER>0</BUILD_NUMBER>
+     <package.os>el6</package.os>
   </properties>
 
   <modules>
