@@ -99,7 +99,7 @@
 					  <require>python &gt;= 2.6</require>
 					  <require>slipstream-client</require>
 					  <require>python-suds</require>
-                                          <require>python-requests</require>
+                      <require>python-requests</require>
 					</requires>
 
 					<mappings>
@@ -130,45 +130,39 @@
                             <source>
                               <location>../tar/bin</location>
                               <includes>
-                                <include>destroy-vm.py</include>
-                                <include>fco-*</include>
-                                <include>flex*</include>
-                                <include>list_vm.py</include>
-                                <!-- include>slipstream.client.conf</include -->
+                                <include>flexiant-*</include>
                               </includes>
                             </source>
                           </sources>
                         </mapping>
 
-                        <!-- mapping>
+                        <mapping>
                             <directory>/usr/bin</directory>
                             <sources>
-                                <softlinkSource>
-                                    <location>${slipstream.base.dir}/connectors/bin/fco-describe-instances</location>
+                                 <softlinkSource>
+                                    <location>${slipstream.base.dir}/connectors/bin/flexiant-describe-instances</location>
                                 </softlinkSource>
                                 <softlinkSource>
-                                    <location>${slipstream.base.dir}/connectors/bin/fco-run-instances</location>
+                                    <location>${slipstream.base.dir}/connectors/bin/flexiant-run-instances</location>
                                 </softlinkSource>
                                 <softlinkSource>
-                                    <location>${slipstream.base.dir}/connectors/bin/fco-terminate-instances</location>
+                                    <location>${slipstream.base.dir}/connectors/bin/flexiant-terminate-instances</location>
                                 </softlinkSource>
                             </sources>
-                        </mapping -->
+                        </mapping>
 
                         <mapping>
                           <directory>/usr/lib/python2.6/site-packages</directory>
-                          <!-- Scripts don't need to be writeable! -->
-                          <filemode>555</filemode>
+                          <filemode>664</filemode>
                           <username>slipstream</username>
                           <groupname>slipstream</groupname>
                           <directoryIncluded>false</directoryIncluded>
                           <sources>
                             <source>
-                              <location>target/dependency</location>
+                              <location>target/dependency/flexiant</location>
                               <includes>
                                 <include>flexiant/**/*</include>
                                 <include>flexiant/packages/*.py</include>
-                                <include>flex*</include>
                               </includes>
                               <excludes>
                                 <exclude>flexiant/**/*.pyc</exclude>
