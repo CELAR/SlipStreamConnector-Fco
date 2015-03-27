@@ -87,27 +87,23 @@
 					</requires>
 					<mappings>
 
-						<mapping>
-              <directory>${jetty.lib.ext.dir}/fco</directory>
-							<filemode>644</filemode>
-							<username>root</username>
-							<groupname>root</groupname>
-							<directoryIncluded>false</directoryIncluded>
-							<sources>
-								<source>
-                  <location>target/dependency/jars/${connector.artefactId}-${project.version}.jar</location>
-									<destination>slipstream-connector-fco.jar</destination>
-								</source>
-							</sources>
-						</mapping>
+                       <mapping>
+                         <directory>${jetty.connector.dir}</directory>
+                         <filemode>775</filemode>
+                         <username>slipstream</username>
+                         <groupname>slipstream</groupname>
+                         <directoryIncluded>false</directoryIncluded>
+                         <sources>
+                           <source>
+                             <location>${project.build.directory}/dependency/jars</location>
+                    		  <includes>
+                    		    <include>*.jar</include>
+                    		  </includes>
+                           </source>
+                         </sources>
+                       </mapping>
 
 					</mappings>
-
-          <postinstallScriptlet>
-            <script>
-/bin/cp -f ${jetty.lib.ext.dir}/fco/* ${slipstream.war.web-inf.lib.dir}
-            </script>
-          </postinstallScriptlet>
 
 				</configuration>
 
