@@ -23,7 +23,6 @@ package com.sixsq.slipstream.connector.flexiant;
 import java.util.logging.Logger;
 
 import com.sixsq.slipstream.exceptions.ValidationException;
-//import com.sixsq.slipstream.connector.InstanceType;
 import com.sixsq.slipstream.factory.ModuleParametersFactoryBase;
 import com.sixsq.slipstream.persistence.Run;
 
@@ -37,23 +36,11 @@ public class FCOImageParametersFactory extends ModuleParametersFactoryBase {
 		super(connectorInstanceName);
 	}
 
-	/**
-	* Image parameters should be defined here. The parameters will appear in
-	* the connector related section of the Image module. Examples:
-	*
-	* putMandatoryParameter(ImageModule.RAM_KEY, "RAM in GB");
-	* putMandatoryParameter(ImageModule.CPU_KEY, "Number of CPUs");
-	*
-	* For more examples see
-	* org.sixsq.slipstream.connector.stratuslab.StratusLabImageParametersFactory
-	* org.sixsq.slipstream.connector.openstack.OpenStackImageParametersFactory
-	*
-	*/
 	@Override
 	protected void initReferenceParameters() throws ValidationException {
 		log.info("In initReferenceParameters()");
 
-		putMandatoryParameter(Run.RAM_PARAMETER_NAME, Run.RAM_PARAMETER_NAME, Run.RAM_PARAMETER_DESCRIPTION);
+		putMandatoryParameter(Run.RAM_PARAMETER_NAME, Run.RAM_PARAMETER_NAME, "Amount of RAM, in MB");
 		putMandatoryParameter(Run.CPU_PARAMETER_NAME, Run.CPU_PARAMETER_NAME, Run.CPU_PARAMETER_DESCRIPTION);
 //		putEnumParameter(ImageModule.INSTANCE_TYPE_KEY, "Cloud instance type",
 //				InstanceType.getValues(), INSTANCE_TYPE_DEFAULT, true);
