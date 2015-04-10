@@ -134,14 +134,14 @@ class FlexiantClientCloud(BaseCloudConnector):
 #        return kp.name
 
     def _get_cpu_and_ram(self, node_instance):
-        ram_GB = node_instance.get_ram()
+        ram_MB = node_instance.get_ram()
         cpu = node_instance.get_cpu()
 
-        if ram_GB is None:
+        if ram_MB is None:
             ram = '512'
             self._print_detail("Defaulting RAM to " + ram)
         else:
-            ram = str(int(ram_GB) * 1024)
+            ram = ram_MB
 
         if cpu is None:
             cpu = '1'
