@@ -174,7 +174,6 @@ public class FCOConnector extends CliConnectorBase {
 
 	@Override
 	protected String constructKey(String key) throws ValidationException {
-		log.info("In constructKey()");
 		return new FCOUserParametersFactory(getConnectorInstanceName()).constructKey(key);
 	}
 
