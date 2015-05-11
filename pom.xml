@@ -49,6 +49,18 @@
       </repository>
   </repositories>
 
+   <build>
+     <pluginManagement>
+         <plugins>
+           <plugin>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>rpm-maven-plugin</artifactId>
+              <version>2.1.2</version>
+           </plugin>
+        </plugins>
+      </pluginManagement>
+  </build>
+
   <distributionManagement>
       <repository>
           <id>celar.releases</id>
