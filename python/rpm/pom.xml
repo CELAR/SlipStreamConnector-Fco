@@ -107,8 +107,8 @@
 						<mapping>
 							<directory>/opt/slipstream/downloads</directory>
 							<filemode>644</filemode>
-							<username>root</username>
-							<groupname>root</groupname>
+							<username>slipstream</username>
+							<groupname>slipstream</groupname>
 							<directoryIncluded>false</directoryIncluded>
 							<sources>
 								<source>
