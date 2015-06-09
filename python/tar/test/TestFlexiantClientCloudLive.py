@@ -152,6 +152,20 @@ lvs
         self.client.deregister_image(new_id)
         print('Done.')
 
+    def test_3_addDisk(self):
+        self._init_connector()
+        try:
+            print('Node instances: %s' %self.node_instances.values())
+            self.client.start_nodes_and_clients(self.user_info, self.node_instances)
+            for node_instance in self.node_instances.values():
+                node_instance.set_cloud_parameter('disk.attach.size', 20)
+                disk_name = self.client.attach_disk(node_instance);
+
+                assert disk_name
+        finally:
+             self.client.stop_deployment()
+        print('Done.')
+
     def _start_wait_running_stop_images(self):
 
         try:

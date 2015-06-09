@@ -11,7 +11,12 @@ from flexiant.VMActions import StopVM
 from flexiant.VMActions import WaitUntilVMRunning
 from slipstream.exceptions.Exceptions import CloudError, ExecutionException
 from flexiant.packages.fco_rest import list_servers
-
+from packages.fco_rest import getToken
+from flexiant.FCOMakeOrchestrator import create_disk
+from packages.fco_rest import attach_disk
+from flexiant.VMActions import setup
+from packages.fco_rest import list_resource_by_uuid
+from flexiant.FCOMakeOrchestrator import start_server
 
 def getConnector(configHolder):
     return getConnectorClass()(configHolder)
@@ -364,3 +369,68 @@ class FlexiantClientCloud(BaseCloudConnector):
                 'between 1 and 63 characters long, and can\'t start or end ' + \
                 'with "-" and can\'t start with digit'
             raise ExecutionException(msg)
+
+    def attach_disk(self, node_instance):
+        """Attach extra disk to the VM.
+        :param node_instance: node instance object
+        :type node_instance: <NodeInstance>
+        :return: name of the device that was attached
+        :rtype: string
+        """
+        print 'Scaling in progress'
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        disk_device_name =  "Disk " + current_time + " #2"
+
+        print 'Node instance name: %s' %node_instance.get_name
+
+        machine_name = node_instance.get_name()
+        vm = self._get_vm(machine_name)
+        print 'Attaching disk on VM:  %s ' %vm
+        vm_uuid = vm['id']
+
+        # Size of the disk to attach (in GB).
+        disk_size_GB = node_instance.get_cloud_parameter('disk.attach.size')
+
+        # Stop the VM before attaching the disk
+        try:
+            ret = StopVM(
+                vm_uuid,
+
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
+
+        endpoint = self.user_info.get_cloud_endpoint()
+
+        token = getToken(self.user_info.get_cloud_endpoint(), self.user_info.get_cloud_username(),
+                        self.user_info.get_cloud('user.uuid'), self.user_info.get_cloud_password())
+        auth = dict(endpoint=endpoint, token=token)
+
+        server_resultset = list_resource_by_uuid(auth, vm_uuid, res_type='SERVER')
+        print '\n\n\n'
+        print server_resultset
+        print '\n\n\n'
+
+        for l in range(0, server_resultset['totalCount']):
+                vdc = server_resultset['list'][l]
+                vdc_uuid = vdc['vdcUUID']
+
+ 	# Create the disk
+        print 'disk_size = ',disk_size_GB
+        disk_uuid = ""
+        if (int(disk_size_GB) > 0):
+            print('Creating additional volatile disk')
+            disk_uuid = create_disk(auth, 'Standard Disk', disk_size_GB, disk_device_name, vdc_uuid)
+
+        # auth_client = setup()
+        # If we created an extra disk, attach it now
+        if (disk_uuid != ""):
+            attach_disk(auth, vm_uuid, disk_uuid=disk_uuid, index='2')
+
+        server_data=[vm_uuid]
+        start_server(auth, server_data)
+        return disk_device_name
