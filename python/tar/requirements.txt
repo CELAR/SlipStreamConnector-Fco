@@ -1,0 +1,3 @@
+suds==0.4
+requests
+#slipstream-client==2.9
