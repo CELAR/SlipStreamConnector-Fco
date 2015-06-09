@@ -595,7 +595,7 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
                        # "resourceName": "the disk"
                        "resourceType" : "DISK",
                        "resourceUUID" : boot_disk_po_uuid,
-                       # "size" : disk_size,
+                       "size" : 20,
                        "vdcUUID": vdc_uuid,
                        # "productOfferUUID": disk_po_uuid
                       }],
