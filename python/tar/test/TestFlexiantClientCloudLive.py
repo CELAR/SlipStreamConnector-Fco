@@ -1,6 +1,7 @@
 import os
 import unittest
 import time
+import traceback
 from mock import Mock
 
 from slipstream import util
