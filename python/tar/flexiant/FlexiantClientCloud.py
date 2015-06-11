@@ -179,6 +179,7 @@ class FlexiantClientCloud(BaseCloudConnector):
             except Exception as ex:
                 raise CloudError('Failed to destroy VM %s with: %s' % \
                                  (instance_id, str(ex)))
+		print(traceback.format_exc())
 
     def _vm_get_ip(self, vm):
         return vm['ip']
