@@ -383,17 +383,13 @@ class FlexiantClientCloud(BaseCloudConnector):
         print 'Node instance name: %s' %node_instance.get_name
         machine_name = node_instance.get_name()
         vm = self._get_vm(machine_name)
-        print 'Attaching disk on VM:  %s ' %vm
         vm_uuid = vm['id']
-
-        # Size of the disk to attach (in GB).
-        disk_size_GB = node_instance.get_cloud_parameter('disk.attach.size')
-
+        
+        print 'Stopping the VM: %s to attach disk' %vm
         # Stop the VM before attaching the disk
         try:
             ret = StopVM(
                 vm_uuid,
-
                 self.user_info.get_cloud('user.uuid'),
                 self.user_info.get_cloud_username(),
                 self.user_info.get_cloud_password(),
@@ -413,18 +409,23 @@ class FlexiantClientCloud(BaseCloudConnector):
         for l in range(0, server_resultset['totalCount']):
                 vdc = server_resultset['list'][l]
                 vdc_uuid = vdc['vdcUUID']
-
- 	# Create the disk
+        
+        # Size of the disk to attach (in GB).
+        disk_size_GB = node_instance.get_cloud_parameter('disk.attach.size')
         print 'disk_size = ',disk_size_GB
         disk_uuid = ""
         if (int(disk_size_GB) > 0):
             print('Creating additional volatile disk')
+            # Create the disk
             disk_uuid = create_disk(auth, 'Standard Disk', disk_size_GB, disk_device_name, vdc_uuid)
 
+        print 'Attaching the additional volatile disk'
         # If we created an extra disk, attach it now
         if (disk_uuid != ""):
             attach_disk(auth, vm_uuid, disk_uuid=disk_uuid, index='2')
 
+        print 'Restart the VM'
         server_data=[vm_uuid]
         start_server(auth, server_data)
         return disk_device_name
+

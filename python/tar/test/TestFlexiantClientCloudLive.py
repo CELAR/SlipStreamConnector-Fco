@@ -161,7 +161,9 @@ lvs
 		node_instance.set_cloud_parameters({'disk.attach.size': 20})
                 disk_name = self.client.attach_disk(node_instance);
                 assert disk_name
-        finally:
+        except Exception as e:
+	    print(traceback.format_exc())
+	finally:
              self.client.stop_deployment()
         print('Done.')
 
