@@ -159,12 +159,36 @@ lvs
             print('Node instances: %s' %self.node_instances.values())
             self.client.start_nodes_and_clients(self.user_info, self.node_instances)
             for node_instance in self.node_instances.values():
-		node_instance.set_cloud_parameters({'disk.attach.size': 20})
-                disk_name = self.client.attach_disk(node_instance);
-                assert disk_name
-        except Exception as e:
-	    print(traceback.format_exc())
-	finally:
+                        node_instance.set_cloud_parameters({'disk.attach.size': 20})
+            vm = self.client._get_vm(node_instance.get_name())
+            vm_uuid = vm['resourceUUID']
+
+            print 'VM Created: %s' %vm
+
+            disk_name = self.client.attach_disk(node_instance);
+            print '================================================================='
+            print ('Disk created with name %s ' %disk_name)
+            # Get the list of VMs
+            vm_list = self.client.list_instances()
+            for i in vm_list:
+                # Get the VM that was created in the test using the UUID obtained after creation
+                if (i['resourceUUID'] == vm_uuid):
+                    #print 'Disks attached on the VM are: '
+                    disks = i['disks']
+
+            print 'The status of the created VM is %s' %i['status']
+            assert i['status']
+
+            for disk in disks:
+                if (disk['resourceName'] == disk_name):
+ 		    print 'The status of the attached disk - %s' %disk['status']
+                    assert disk['status']
+                    assert disk['serverUUID'] == vm_uuid
+		    print 'Disk attached info: %s' %disk
+
+            print '================================================================='
+
+        finally:
              self.client.stop_deployment()
         print('Done.')
 
