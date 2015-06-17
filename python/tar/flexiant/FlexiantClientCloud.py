@@ -224,7 +224,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         if not ret:
             raise CloudError('Failed to list VM %s: result is empty')
 
-        return str(ret.status)
+        return str(ret['status'])
 
     def _build_image(self, user_info, node_instance):
         # TODO: implement new image build.

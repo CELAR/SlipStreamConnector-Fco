@@ -47,8 +47,6 @@ def DestroyVM(server_uuid, customerUUID, customerUsername, customerPassword, end
     StopVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False)
     result = rest_delete_resource(auth_client, server_uuid, "SERVER")
 
-    print "rest_delete_resource() result is:"
-    print result
     print "------"
     return result
 

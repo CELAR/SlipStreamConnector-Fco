@@ -1,14 +1,5 @@
-#!/usr/bin/python
-#
-# This python script is used to test creating many VMs in FCO using UserAPI
-
-# It uses an initialisation file: setup.ini for api session credentials
-
-from .packages.user_auth import ini_auth
-from .packages.server_ops import list_server
-from .packages.resource_ops import list_resource_name
-from .packages.resource_ops import list_resource_type
-from .packages.resource_ops import list_resource
+from packages.fco_rest import getToken
+from packages.fco_rest import list_resource_by_uuid
 
 # import datetime for filename gen
 import datetime
@@ -16,11 +7,7 @@ import time
 
 # you can change INFO to DEBUG for (a lot) more information)
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('suds.client').setLevel(logging.INFO)
-logging.getLogger('suds.transport').setLevel(logging.INFO)
-logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
-logging.getLogger('suds.wsdl').setLevel(logging.INFO)
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 import config
 import argparse
@@ -29,7 +16,8 @@ import argparse
 def setup_test():
     """Function to set up api session, import credentials etc."""
     # Setup root login etc from config file
-    auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
+    token = getToken(config.HOST_NAME, config.USER_LOGIN, config.CUST_UUID, config.USER_PASSWORD)
+    auth_client = dict(endpoint=config.HOST_NAME, token=token)
     return auth_client
 
 
@@ -45,8 +33,10 @@ def ListVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoi
     # config.NETWORK_TYPE  = networkType
 
     auth_client = setup_test()
-    server_data = list_server(auth_client, server_uuid)
-    return server_data
+    server_resultset = list_resource_by_uuid(auth_client, server_uuid, res_type='SERVER')
+    for l in range(0, server_resultset['totalCount']):
+        server = server_resultset['list'][l]
+    return server
 
 if __name__ == "__main__":
     """Main Function"""
