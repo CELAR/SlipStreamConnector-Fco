@@ -317,10 +317,10 @@ class FlexiantClientCloud(BaseCloudConnector):
         except Exception as ex:
             raise CloudError('Failed to create image from disk of VM %s with: %s' % (vm_uuid, str(ex)))
 
-        print ("UUID of new image is " + ret.resourceUUID)
+        print ("UUID of new image is " + ret['resourceUUID'])
         print("end _buildImageOnFlexiant()")
 
-        return ret.resourceUUID
+        return ret['resourceUUID']
 
     def waitUntilVMRunning(self, instanceId):
         timeWait = 120
@@ -404,6 +404,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         token = getToken(self.user_info.get_cloud_endpoint(), self.user_info.get_cloud_username(),
                         self.user_info.get_cloud('user.uuid'), self.user_info.get_cloud_password())
         auth = dict(endpoint=endpoint, token=token)
+        
         server_resultset = list_resource_by_uuid(auth, vm_uuid, res_type='SERVER')
 
         print '\n\n\n'
@@ -430,4 +431,5 @@ class FlexiantClientCloud(BaseCloudConnector):
         server_data=[vm_uuid]
         start_server(auth, server_data)
         return disk_device_name
+
 

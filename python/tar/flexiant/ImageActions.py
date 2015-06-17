@@ -1,11 +1,10 @@
 #!/usr/bin/python
 #
 
-from packages.user_auth import ini_auth
-from packages.server_ops import list_server
-#from packages.resource_ops import list_resource_name
-#from packages.resource_ops import list_resource_type
-from packages.resource_ops import list_resource
+from packages.fco_rest import getToken
+from packages.fco_rest import rest_create_image
+from packages.fco_rest import list_resource_by_uuid
+
 
 # import datetime for filename gen
 import sys
@@ -14,11 +13,8 @@ import time
 
 # you can change INFO to DEBUG for (a lot) more information)
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('suds.client').setLevel(logging.INFO)
-logging.getLogger('suds.transport').setLevel(logging.INFO)
-logging.getLogger('suds.xsd.schema').setLevel(logging.INFO)
-logging.getLogger('suds.wsdl').setLevel(logging.INFO)
+#REST logging
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 import config
 import argparse
@@ -26,55 +22,38 @@ import argparse
 
 def setup():
     """Function to set up api session, import credentials etc."""
-    auth_client = ini_auth(config.HOST_NAME, config.USER_LOGIN, config.USER_PASSWORD, config.CUST_UUID)
+    token = getToken(config.HOST_NAME, config.USER_LOGIN, config.CUST_UUID, config.USER_PASSWORD)
+    auth_client = dict(endpoint=config.HOST_NAME, token=token)
     return auth_client
-
-
-#def WaitUntilVMRunning(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False):
-#    config.get_config("")
-#
-#    config.CUST_UUID = customerUUID
-#    config.USER_LOGIN = customerUsername
-#    config.USER_PASSWORD = customerPassword
-#    config.HOST_NAME = endpoint
-#    # config.NETWORK_TYPE  = networkType
-#
-#    auth_client = setup()
-#    server_state = get_server_state(auth_client, server_uuid)
-#    
-#    if (server_state != 'RUNNING'):
-#        ret = wait_for_server(server_client=auth_client, server_uuid=server_uuid, status='RUNNING')
-#        if (ret != 0):
-#            raise Exception("Server did not get to RUNNING state")
-#
-#    return server_state
 
 def image_disk(auth_client, server_uuid, default_user, diskIndex):
     # Details of the server
     print("Details for the server we will Image:")
-    res=list_server(auth_client, server_uuid)
     print("============================")
-    
-    # Image it's disk
-    print res.disks[diskIndex]
-    print("===")
-    image_data = auth_client.factory.create('image')
-    image_data.baseUUID = res.disks[diskIndex].resourceUUID
-    image_data.vmSupport = True
-    image_data.defaultUser=default_user
-    image_data.genPassword = True
+    server_resultset = list_resource_by_uuid(auth_client, server_uuid, res_type='SERVER')
+    for l in range(0, server_resultset['totalCount']):
+        server = server_resultset['list'][l]
+
+    #baseUUID = server['resourceUUID']
+    clusterUUID = server['clusterUUID']
+    vdcUUID = server['vdcUUID']
     # Image should be same size as the source disk
-    image_data.size = res.disks[diskIndex].size
+    disk = server['disks'][diskIndex]
+    size = disk['size']
+    baseUUID = disk['resourceUUID']
+
     print("Create Image input:")
-    print image_data
-    
-    job_ret = auth_client.service.createImage(image_data)
-    print job_ret
+    response = rest_create_image(auth_client, baseUUID, clusterUUID, vdcUUID, size, default_user)
+    print("=============================")
+    print response
     print("Details for newly created image:")
-    newimg_ret = list_resource(auth_client, job_ret.itemUUID,"IMAGE")
-    print newimg_ret.list[0]
+    createdImage = list_resource_by_uuid(auth_client, response['itemUUID'],"IMAGE")
+    for l in range(0, createdImage['totalCount']):
+        image = createdImage['list'][l]
+
+    print image
     sys.stdout.flush()
-    return newimg_ret.list[0]
+    return image
 
 def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPassword, endpoint, default_user="ubuntu", isVerbose=False):
 
@@ -87,7 +66,7 @@ def ImageDisk(server_uuid, diskIndex, customerUUID, customerUsername, customerPa
     config.HOST_NAME = endpoint
 
     auth_client = setup()
-    
+
     image_state = image_disk(auth_client, server_uuid, default_user, 0)
     return image_state
 
@@ -134,4 +113,5 @@ if __name__ == "__main__":
                    cmdargs.defaultUser[0],
                    cmdargs.isVerbose)
         print ret
+
 

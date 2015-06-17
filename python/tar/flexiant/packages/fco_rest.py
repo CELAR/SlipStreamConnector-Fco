@@ -182,6 +182,54 @@ def create_nic(auth_parms, nic_count, network_type, cluster_uuid, vdc_uuid):
     nic_uuid = nic_result_set['itemUUID']
     return nic_uuid
 
+# REST API call - createImage. It needs the Image object initialized with details  
+def rest_create_image(auth_parms, baseUUID, clusterUUID, vdcUUID, size, default_user = "ubuntu"):
+    createURL = auth_parms['endpoint'] + "rest/user/current/resources/image"
+    imageData = { "baseUUID": baseUUID,
+             "clusterUUID" : clusterUUID,
+             "ctSupport" : False,
+             "resourceName" : "ImageX",
+             "resourceType" : "IMAGE",
+             "vdcUUID" : vdcUUID,
+             "vmSupport" : True,
+             "size" : size,
+             "defaultUser" : default_user,
+             "genPassword" : True
+         }
+
+    payload = imageData
+
+    print("REST - Create Image input:")
+    print imageData
+
+    print(payload)
+    payload_as_string = json.JSONEncoder().encode(payload)
+
+    # Need to set the content type, because if we don't the payload is just silently ignored
+    headers = {'content-type': 'application/json'}
+    res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+#    print(res.content)
+    print("==============================================================")
+
+    print(res.url)
+
+    print("res=" + str(res))
+    print res.content
+    # print res.status_code
+
+    # Status 202 (accepted) is good
+    if (res.status_code == requests.codes.accepted):
+      # print("Done")
+      response = json.loads(res.content)
+      print "response=" + str(response)
+      return response
+
+    # Something went wrong. Pick out the status code and message
+    response = json.loads(res.content)
+
+    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    return ""
+
 def list_image(auth_params, uuid):
     """ Get Image details """
 
@@ -829,3 +877,34 @@ def _list_servers(endpoint, token):
         return json.loads(res.content)
     else:
         raise RuntimeError("Error - HTTP status code: " + str(res.status_code))
+   
+def rest_delete_resource(auth_parms, resource_uuid, res_type):
+    attachURL = auth_parms['endpoint'] + "rest/user/current/resources/" + res_type + "/" + resource_uuid
+    cascade = { "cascade": True }
+    payload = cascade
+    print(payload)
+    payload_as_string = json.JSONEncoder().encode(payload)
+    headers = {'content-type': 'application/json'}
+    res = requests.delete(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+    print(res.content)
+    print("==============================================================")
+
+    print(res.url)
+
+    print("res=" + str(res))
+    print res.content
+    print res.status_code
+
+    # Status 200 is good
+    if (res.status_code == requests.codes.ok):
+      print("Done")
+      response = json.loads(res.content)
+      print "response=" + str(response)
+      return response
+
+    # Something went wrong. Pick out the status code and message
+    response = json.loads(res.content)
+
+    return ""
+ 
+
