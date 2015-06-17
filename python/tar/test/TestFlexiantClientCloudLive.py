@@ -153,7 +153,7 @@ lvs
         self.client.deregister_image(new_id)
         print('Done.')
 
-    def test_3_addDisk(self):
+    def xtest_3_addDisk(self):
         self._init_connector()
         try:
             print('Node instances: %s' %self.node_instances.values())
@@ -181,10 +181,10 @@ lvs
 
             for disk in disks:
                 if (disk['resourceName'] == disk_name):
- 		    print 'The status of the attached disk - %s' %disk['status']
+                    print 'The status of the attached disk %s' %disk['status']
                     assert disk['status']
                     assert disk['serverUUID'] == vm_uuid
-		    print 'Disk attached info: %s' %disk
+                    print 'Attached disk info: %s' %disk
 
             print '================================================================='
 
