@@ -869,7 +869,7 @@ def _list_servers(endpoint, token):
     queryLimit = {"from": 0,
                   "to": 200,
                   "maxRecords": 200,
-                  "loadChildren": False}
+                  "loadChildren": True}
     payload_as_string = json.JSONEncoder().encode({"queryLimit": queryLimit})
     headers = {'content-type': 'application/json'}
     res = requests.get(listURL, data=payload_as_string, auth=(token, ''), headers=headers)
