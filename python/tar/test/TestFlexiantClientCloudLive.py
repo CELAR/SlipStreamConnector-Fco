@@ -177,12 +177,12 @@ lvs
                     disks = i['disks']
 
             print 'The status of the created VM is %s' %i['status']
-            assert i['status']
+            assert i['status'] == "RUNNING"
 
             for disk in disks:
                 if (disk['resourceName'] == disk_name):
                     print 'The status of the attached disk %s' %disk['status']
-                    assert disk['status']
+                    assert disk['status'] == "ATTACHED_TO_SERVER"
                     assert disk['serverUUID'] == vm_uuid
                     print 'Attached disk info: %s' %disk
 
