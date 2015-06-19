@@ -18,6 +18,7 @@ from packages.fco_rest import attach_disk
 from flexiant.VMActions import setup
 from packages.fco_rest import list_resource_by_uuid
 from flexiant.FCOMakeOrchestrator import start_server
+from packages.fco_rest import wait_for_server
 
 def getConnector(configHolder):
     return getConnectorClass()(configHolder)
@@ -427,9 +428,16 @@ class FlexiantClientCloud(BaseCloudConnector):
         if (disk_uuid != ""):
             attach_disk(auth, vm_uuid, disk_uuid=disk_uuid, index='2')
 
+	# Restart the VM and wait till it gets in RUNNING state
         print 'Restart the VM'
         server_data=[vm_uuid]
         start_server(auth, server_data)
-        return disk_device_name
+
+	print("Waiting for the server to get in RUNNING state")
+        ret = wait_for_server(auth_client, server_uuid, 'RUNNING')
+        if (ret != 0):
+            raise Exception("Server is not in RUNNING state")
+        # Return the created disk's uuid
+	return disk_uuid
 
 
