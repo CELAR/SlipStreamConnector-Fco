@@ -19,6 +19,8 @@ from flexiant.VMActions import setup
 from packages.fco_rest import list_resource_by_uuid
 from flexiant.FCOMakeOrchestrator import start_server
 from packages.fco_rest import wait_for_server
+from packages.fco_rest import detach_disk
+from packages.fco_rest import rest_delete_resource
 
 def getConnector(configHolder):
     return getConnectorClass()(configHolder)
@@ -383,7 +385,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         print 'Scaling in progress'
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
         disk_device_name =  "Disk " + current_time + " #2"
-        print 'Node instance name: %s' %node_instance.get_name
+        print 'Node instance name: %s' %node_instance.get_name()
         machine_name = node_instance.get_name()
         vm = self._get_vm(machine_name)
         vm_uuid = vm['id']
@@ -407,15 +409,13 @@ class FlexiantClientCloud(BaseCloudConnector):
         auth = dict(endpoint=endpoint, token=token)
         
         server_resultset = list_resource_by_uuid(auth, vm_uuid, res_type='SERVER')
-
-        print '\n\n\n'
-
         for l in range(0, server_resultset['totalCount']):
                 vdc = server_resultset['list'][l]
                 vdc_uuid = vdc['vdcUUID']
         
         # Size of the disk to attach (in GB).
-        disk_size_GB = node_instance.get_cloud_parameter('disk.attach.size')
+        disk_size_GB = node_instance.get_disk_attach_size()
+        print '\n\n\n'
         print 'disk_size = ',disk_size_GB
         disk_uuid = ""
         if (int(disk_size_GB) > 0):
@@ -440,4 +440,64 @@ class FlexiantClientCloud(BaseCloudConnector):
         # Return the created disk's uuid
 	return disk_uuid
 
+    # detach_disk method not only detaches a disk, but also deletes it.
+    def detach_disk(self, node_instance):
+        """Detach disk from the VM.
+        :param node_instance: node instance object
+        :type node_instance: <NodeInstance>
+        """
+        print 'Scaling down in progress for NODE INSTANCE name: %s' %node_instance.get_name()
+        machine_name = node_instance.get_name()
+        vm = self._get_vm(machine_name)
+        vm_uuid = vm['id']
 
+        print 'Stopping the VM: %s to detach disk' %vm
+        # Stop the VM before detaching the disk
+        try:
+            ret = StopVM(
+                vm_uuid,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
+
+        endpoint = self.user_info.get_cloud_endpoint()
+        token = getToken(self.user_info.get_cloud_endpoint(), self.user_info.get_cloud_username(),
+                        self.user_info.get_cloud('user.uuid'), self.user_info.get_cloud_password())
+        auth = dict(endpoint=endpoint, token=token)
+        server_resultset = list_resource_by_uuid(auth, vm_uuid, res_type='SERVER')
+        for l in range(0, server_resultset['totalCount']):
+            server = server_resultset['list'][l]
+            disks = server['disks']
+
+        # Get the UUID of the disk to be detached
+        detach_diskUUID = node_instance.get_disk_detach_device()
+        print '\n\n\n'
+        print 'detach_diskUUID passed = %s' %detach_diskUUID
+
+        found = False
+        for disk in disks:
+            if(disk['resourceUUID'] == detach_diskUUID):
+                print 'Disk found on the server'
+                found = True
+        if (found == False):
+            raise Exception("Disk not found on the server %s" %vm_uuid)
+
+        print 'Detaching the additional volatile disk'
+        # Detach it now
+        if (detach_diskUUID != ""):
+	    detach_disk(auth, vm_uuid, detach_diskUUID)
+            # Delete the resource
+            rest_delete_resource(auth, detach_diskUUID, "DISK")
+
+        print 'Restart the VM'
+        server_data=[vm_uuid]
+        start_server(auth, server_data)
+
+        print("Waiting for the server to get in RUNNING state")
+        ret = wait_for_server(auth, vm_uuid, 'RUNNING')
+        if (ret != 0):
+            raise Exception("Server is not in RUNNING state")

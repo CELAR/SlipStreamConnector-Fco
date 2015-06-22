@@ -490,6 +490,32 @@ def attach_disk(auth_parms, server_uuid, disk_uuid, index):
     # print(response['message'] + " (error code: " + response['errorCode'] + ")")
     return ""
 
+def detach_disk(auth_parms, server_uuid, disk_uuid):
+    detachURL = auth_parms['endpoint'] + "rest/user/current/resources/server/" + server_uuid + "/disk/" + disk_uuid + "/detach"
+
+    # payload = {"index": index}
+    # payload_as_string = json.JSONEncoder().encode(payload)
+    # Need to set the content type, because if we don't the payload is just silently ignored
+    headers = {'content-type': 'application/json'}
+    res = requests.put(detachURL, data='', auth=(auth_parms['token'], ''), headers=headers)
+    print(res.content)
+    print("==============================================================")
+    print(res.url)
+    print("res=" + str(res))
+    print res.content
+    print res.status_code
+
+    # Status 200 is good
+    if (res.status_code == requests.codes.ok):
+      print("Done")
+      response = json.loads(res.content)
+      print "response=" + str(response)
+      return response
+
+    # Something went wrong. Pick out the status code and message
+    response = json.loads(res.content)
+    return ""
+
 def wait_for_job(auth_parms, job_uuid, status, time_limit):
     """ check resource has reached state """
     print("Begin wait_for_job on resource " + job_uuid + " reaching status " + status + " at " + time.strftime("%Y-%m-%d %H:%M:%S"))

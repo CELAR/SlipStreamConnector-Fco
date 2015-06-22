@@ -159,15 +159,15 @@ lvs
             print('Node instances: %s' %self.node_instances.values())
             self.client.start_nodes_and_clients(self.user_info, self.node_instances)
             for node_instance in self.node_instances.values():
-                        node_instance.set_cloud_parameters({'disk.attach.size': 20})
-            vm = self.client._get_vm(node_instance.get_name())
-            vm_uuid = vm['resourceUUID']
+                node_instance.set_parameter(NodeDecorator.SCALE_DISK_ATTACH_SIZE, 20)
+                vm = self.client._get_vm(node_instance.get_name())
+                vm_uuid = vm['resourceUUID']
 
-            print 'VM Created: %s' %vm
+                print 'VM Created: %s' %vm
 
-            disk_name = self.client.attach_disk(node_instance);
-            print '================================================================='
-            print ('Disk created with name %s ' %disk_name)
+                disk_uuid = self.client.attach_disk(node_instance);
+                print '================================================================='
+                print ('Disk created with uuid %s ' %disk_uuid)
             # Get the list of VMs
             vm_list = self.client.list_instances()
             for i in vm_list:
@@ -175,22 +175,72 @@ lvs
                 if (i['resourceUUID'] == vm_uuid):
                     #print 'Disks attached on the VM are: '
                     disks = i['disks']
+                    print 'The status of the created VM is %s' %i['status']
+                    assert i['status'] == "RUNNING"
 
-            print 'The status of the created VM is %s' %i['status']
-            assert i['status'] == "RUNNING"
-
-            for disk in disks:
-                if (disk['resourceName'] == disk_name):
-                    print 'The status of the attached disk %s' %disk['status']
-                    assert disk['status'] == "ATTACHED_TO_SERVER"
-                    assert disk['serverUUID'] == vm_uuid
-                    print 'Attached disk info: %s' %disk
+                    for disk in disks:
+                        if (disk['resourceUUID'] == disk_uuid):
+                            print 'The status of the attached disk %s' %disk['status']
+                            assert disk['status'] == "ATTACHED_TO_SERVER"
+                            assert disk['serverUUID'] == vm_uuid
+                            print 'Attached disk info: %s' %disk
 
             print '================================================================='
 
         finally:
              self.client.stop_deployment()
         print('Done.')
+
+    def xtest_4_removeDisk(self):
+        self._init_connector()
+        try:
+            print('Node instances: %s' %self.node_instances.values())
+            self.client.start_nodes_and_clients(self.user_info, self.node_instances)
+            for node_instance in self.node_instances.values():
+                vm = self.client._get_vm(node_instance.get_name())
+                vm_uuid = vm['resourceUUID']
+                print node_instance
+
+                print 'VM Created: %s' %vm
+                node_instance.set_parameter(NodeDecorator.SCALE_DISK_ATTACH_SIZE, 20)
+                disk_uuid = self.client.attach_disk(node_instance)
+                print '================================================================='
+                print ('Disk created with uuid %s ' %disk_uuid)
+
+            # Get the list of VMs
+            vm_list = self.client.list_instances()
+            for i in vm_list:
+                # Get the VM that was created in the test using the UUID obtained after creation
+                if (i['resourceUUID'] == vm_uuid):
+                    #print 'Disks attached on the VM are: '
+                    disks = i['disks']
+                    print 'The status of the VM is %s' %i['status']
+
+                    for disk in disks:
+                        if (disk['resourceUUID'] == disk_uuid):
+                            print 'The status of the attached disk %s' %disk['status']
+
+                            node_instance.set_parameter(NodeDecorator.SCALE_DISK_DETACH_DEVICE, disk_uuid)
+                            self.client.detach_disk(node_instance)
+
+            vm_list = self.client.list_instances()
+            for i in vm_list:
+                # Get the VM that was created in the test using the UUID obtained after creation
+                if (i['resourceUUID'] == vm_uuid):
+                    #print 'Disks attached on the VM are: '
+                    disks = i['disks']
+                    print "Disks on the VM are:"
+                    print disks
+                    for disk in disks:
+                        assert disk['resourceUUID'] != disk_uuid
+                    print 'The status of the VM is %s' %i['status']
+                    assert i['status'] == "RUNNING"
+            print '================================================================='
+
+        finally:
+            self.client.stop_deployment()
+        print('Done.')
+
 
     def _start_wait_running_stop_images(self):
 
