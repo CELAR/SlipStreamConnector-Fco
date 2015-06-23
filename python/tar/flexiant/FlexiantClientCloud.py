@@ -434,7 +434,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         start_server(auth, server_data)
 
 	print("Waiting for the server to get in RUNNING state")
-        ret = wait_for_server(auth, server_uuid, 'RUNNING')
+        ret = wait_for_server(auth, vm_uuid, 'RUNNING')
         if (ret != 0):
             raise Exception("Server is not in RUNNING state")
         # Return the created disk's uuid
