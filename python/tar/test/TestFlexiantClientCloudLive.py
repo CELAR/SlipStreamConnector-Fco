@@ -240,7 +240,38 @@ lvs
         finally:
             self.client.stop_deployment()
         print('Done.')
+    
+    def xtest_5_resize(self):
+        self._init_connector()
+        MODIFIED_CPU_COUNT = 2
+        MODIFIED_RAM_AMT = 4096
+        try:
+            print('Node instances: %s' %self.node_instances.values())
+            self.client.start_nodes_and_clients(self.user_info, self.node_instances)
+            for node_instance in self.node_instances.values():
+                node_instance.set_cloud_parameters({'cpu': MODIFIED_CPU_COUNT})
+                node_instance.set_cloud_parameters({'ram': MODIFIED_RAM_AMT})
+                vm = self.client._get_vm(node_instance.get_name())
+                vm_uuid = vm['resourceUUID']
+                print 'VM Created: %s' %vm
+                self.client._resize(node_instance)
+            print '================================================================='
 
+            # Get the list of VMs
+            vm_list = self.client.list_instances()
+            for i in vm_list:
+                # Get the VM that was created in the test using the UUID obtained after creation
+                if (i['resourceUUID'] == vm_uuid):
+                    #print 'Disks attached on the VM are: '
+                    disks = i['disks']
+                    print 'The status of the created VM is %s' %i['status']
+                    assert i['status'] == "RUNNING"
+                    assert i['cpu'] == MODIFIED_CPU_COUNT
+                    assert i['ram'] == MODIFIED_RAM_AMT
+            print '================================================================='
+
+        finally:
+             self.client.stop_deployment()
 
     def _start_wait_running_stop_images(self):
 

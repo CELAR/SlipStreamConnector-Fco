@@ -933,4 +933,43 @@ def rest_delete_resource(auth_parms, resource_uuid, res_type):
 
     return ""
  
+def modify_cpu_ram(auth_parms, server_uuid, server_name, cluster_uuid, vdc_uuid, cpu_count, ram_amount, server_po_uuid):
+    attachURL = auth_parms['endpoint'] + "rest/user/current/resources/server/" + server_uuid
+
+    server = {
+              "resourceName" : server_name,
+              "clusterUUID" : cluster_uuid,
+              "vdcUUID" : vdc_uuid,
+              "cpu" : cpu_count,
+              "ram" : ram_amount,
+              "productOfferUUID" : server_po_uuid,
+              "resourceType" : "SERVER"
+            }
+
+    print "REST - modify server input:"
+    print server
+
+    payload = server
+
+    print payload
+    payload_as_string = json.JSONEncoder().encode(payload)
+    headers = {'content-type': 'application/json'}
+    res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+
+    print("==============================================================")
+    print(res.url)
+    print res.content
+    print res.status_code
+
+    # Status 200 is good
+    if (res.status_code == requests.codes.ok):
+      response = json.loads(res.content)
+      # print "response=" + str(response)
+      return response
+
+    # Something went wrong. Pick out the status code and message
+    response = json.loads(res.content)
+
+    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    return ""
 

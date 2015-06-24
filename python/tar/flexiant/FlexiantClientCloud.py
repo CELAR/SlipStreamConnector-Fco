@@ -21,6 +21,9 @@ from flexiant.FCOMakeOrchestrator import start_server
 from packages.fco_rest import wait_for_server
 from packages.fco_rest import detach_disk
 from packages.fco_rest import rest_delete_resource
+from packages.fco_rest import modify_cpu_ram
+from packages.fco_rest import get_prod_offer_uuid
+import slipstream.exceptions.Exceptions as Exceptions
 
 def getConnector(configHolder):
     return getConnectorClass()(configHolder)
@@ -436,7 +439,7 @@ class FlexiantClientCloud(BaseCloudConnector):
 	print("Waiting for the server to get in RUNNING state")
         ret = wait_for_server(auth, vm_uuid, 'RUNNING')
         if (ret != 0):
-            raise Exception("Server is not in RUNNING state")
+            raise Exceptions.ExecutionException("Server is not in RUNNING state")
         # Return the created disk's uuid
 	return disk_uuid
 
@@ -484,7 +487,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 print 'Disk found on the server'
                 found = True
         if (found == False):
-            raise Exception("Disk not found on the server %s" %vm_uuid)
+            raise Exceptions.ExecutionException("Disk not found on the server %s" %vm_uuid)
 
         print 'Detaching the additional volatile disk'
         # Detach it now
@@ -500,4 +503,75 @@ class FlexiantClientCloud(BaseCloudConnector):
         print("Waiting for the server to get in RUNNING state")
         ret = wait_for_server(auth, vm_uuid, 'RUNNING')
         if (ret != 0):
-            raise Exception("Server is not in RUNNING state")
+            raise Exceptions.ExecutionException("Server is not in RUNNING state")
+
+    def _resize(self, node_instance):
+        """
+        :param node_instance: node instance object
+        :type node_instance: <NodeInstance>
+        """
+        print 'Resizing in progress'
+        print 'Node instance name: %s' %node_instance.get_name()
+        machine_name = node_instance.get_name()
+        vm = self._get_vm(machine_name)
+        vm_uuid = vm['id']
+
+        print 'Stopping the VM: %s to resize CPU/RAM' %vm
+        # Stop the VM before attaching the disk
+        try:
+            ret = StopVM(
+                vm_uuid,
+                self.user_info.get_cloud('user.uuid'),
+                self.user_info.get_cloud_username(),
+                self.user_info.get_cloud_password(),
+                self.user_info.get_cloud_endpoint(),
+                self.verbose)
+        except Exception as ex:
+            raise CloudError('Failed to stop VM %s with: %s' % (vm_uuid, str(ex)))
+
+        endpoint = self.user_info.get_cloud_endpoint()
+        token = getToken(self.user_info.get_cloud_endpoint(), self.user_info.get_cloud_username(),
+                        self.user_info.get_cloud('user.uuid'), self.user_info.get_cloud_password())
+        auth = dict(endpoint=endpoint, token=token)
+
+        server_resultset = list_resource_by_uuid(auth, vm_uuid, res_type='SERVER')
+        for l in range(0, server_resultset['totalCount']):
+                server = server_resultset['list'][l]
+                vdc_uuid = server['vdcUUID']
+        ram = 0
+        cpu = 0
+        # get the RAM in GB.
+        ram = node_instance.get_ram()
+        # get the Number of CPUs.
+        cpu = node_instance.get_cpu()
+
+        print '\n\n\n'
+        print 'CPU = ', cpu
+        print 'RAM = ', ram
+
+        clusterUUID = server['clusterUUID']
+        vdcUUID = server['vdcUUID']
+        disks = server['disks']
+        serverName = server['resourceName']
+
+        # Get the Product Offer UUID of the Standard Server product
+        product_offer = 'Standard Server'
+        server_po_uuid = get_prod_offer_uuid(auth, product_offer)
+        if (server_po_uuid == ""):
+            raise Exceptions.ExecutionException("No '" + product_offer + "' Product Offer found")
+
+        if ((int(cpu) >= 0) and ((int(ram) >= 0))):
+            if(server_po_uuid != ""):
+                # Modify the server
+                modify_cpu_ram(auth, vm_uuid, serverName, clusterUUID, vdcUUID, cpu, ram, server_po_uuid)
+
+        # Restart the VM and wait till it gets in RUNNING state
+        print 'Restart the VM'
+        server_data = [vm_uuid]
+        start_server(auth, server_data)
+
+        print("Waiting for the server to get in RUNNING state")
+        ret = wait_for_server(auth, vm_uuid, 'RUNNING')
+        if (ret != 0):
+            raise Exceptions.ExecutionException("Server is not in RUNNING state")
+
