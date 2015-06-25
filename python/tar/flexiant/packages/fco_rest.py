@@ -655,6 +655,9 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
                        ram_amount, boot_disk_po_uuid, context_script):
 
     createURL = auth_parms['endpoint'] + "rest/user/current/resources/server"
+    
+    img_ret = list_image(auth_parms, image_uuid)
+    size = img_ret['size']
 
 # "clusterUUID": cluster_uuid,
     server_json = {
@@ -669,7 +672,7 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
                        # "resourceName": "the disk"
                        "resourceType" : "DISK",
                        "resourceUUID" : boot_disk_po_uuid,
-                       "size" : 20,
+                       "size" : size,
                        "vdcUUID": vdc_uuid,
                        # "productOfferUUID": disk_po_uuid
                       }],
