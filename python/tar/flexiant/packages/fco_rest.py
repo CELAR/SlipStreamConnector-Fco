@@ -629,7 +629,7 @@ def get_server_state(auth_parms, server_uuid):
         return server_status
 
     print 'ERROR: Server not found. UUID: %s' %server_uuid
-        return "NOT_FOUND"
+    return "NOT_FOUND"
 
 def get_first_vdc_in_cluster(auth, cluster_uuid):
     # Function to find the first VDC the user has in the specified cluster
