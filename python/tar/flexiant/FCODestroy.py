@@ -44,11 +44,11 @@ def DestroyVM(server_uuid, customerUUID, customerUsername, customerPassword, end
 
     auth_client = setup_test()
 
-    StopVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False)
-    result = rest_delete_resource(auth_client, server_uuid, "SERVER")
-
-    print "------"
-    return result
+    server_state = StopVM(server_uuid, customerUUID, customerUsername, customerPassword, endpoint, isVerbose=False)
+    if (server_state != 'NOT_FOUND'):
+        result = rest_delete_resource(auth_client, server_uuid, "SERVER")
+	print "------"
+    	return result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

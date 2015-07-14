@@ -621,11 +621,14 @@ def list_resource_by_uuid(auth_parms, uuid, res_type):
 
 def get_server_state(auth_parms, server_uuid):
     # Function to get server state given server uuid
-
     server_resultset = list_resource_by_uuid(auth_parms, uuid=server_uuid, res_type='SERVER')
-#    print server_result_set
-    server_status = server_resultset['list'][0]['status']
-#    print "server status: " + server_status
+    # print server_result_set
+    if (server_resultset['totalCount'] != 0):
+        server_status = server_resultset['list'][0]['status']
+        print 'ERROR: Server not found. UUID: %s' %server_uuid
+        return "NOT_FOUND"
+
+    #print "server status: " + server_status
     return server_status
 
 def get_first_vdc_in_cluster(auth, cluster_uuid):

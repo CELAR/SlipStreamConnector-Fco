@@ -46,6 +46,9 @@ def stop_server(auth_client, server_uuid):
     if (server_state == 'RUNNING'):
         change_server_status(auth_client, server_uuid, 'STOPPED')
 
+    if (server_state == 'NOT_FOUND'):
+        return server_state
+
     # Check we actually made it to STOPPED state
     ret = wait_for_server(auth_client, server_uuid, 'STOPPED')
     if (ret != 0):
