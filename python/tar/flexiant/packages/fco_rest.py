@@ -625,11 +625,11 @@ def get_server_state(auth_parms, server_uuid):
     # print server_result_set
     if (server_resultset['totalCount'] != 0):
         server_status = server_resultset['list'][0]['status']
-        print 'ERROR: Server not found. UUID: %s' %server_uuid
-        return "NOT_FOUND"
+	#print "server status: " + server_status
+        return server_status
 
-    #print "server status: " + server_status
-    return server_status
+    print 'ERROR: Server not found. UUID: %s' %server_uuid
+        return "NOT_FOUND"
 
 def get_first_vdc_in_cluster(auth, cluster_uuid):
     # Function to find the first VDC the user has in the specified cluster
