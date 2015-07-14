@@ -378,7 +378,7 @@ class FlexiantClientCloud(BaseCloudConnector):
                 'with "-" and can\'t start with digit'
             raise ExecutionException(msg)
 
-    def attach_disk(self, node_instance):
+    def _attach_disk(self, node_instance):
         """Attach extra disk to the VM.
         :param node_instance: node instance object
         :type node_instance: <NodeInstance>
@@ -444,7 +444,7 @@ class FlexiantClientCloud(BaseCloudConnector):
 	return disk_uuid
 
     # detach_disk method not only detaches a disk, but also deletes it.
-    def detach_disk(self, node_instance):
+    def _detach_disk(self, node_instance):
         """Detach disk from the VM.
         :param node_instance: node instance object
         :type node_instance: <NodeInstance>
