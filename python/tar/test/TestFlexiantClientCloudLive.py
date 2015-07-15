@@ -165,7 +165,7 @@ lvs
 
                 print 'VM Created: %s' %vm
 
-                disk_uuid = self.client.attach_disk(node_instance);
+                disk_uuid = self.client._attach_disk(node_instance);
                 print '================================================================='
                 print ('Disk created with uuid %s ' %disk_uuid)
             # Get the list of VMs
@@ -203,7 +203,7 @@ lvs
 
                 print 'VM Created: %s' %vm
                 node_instance.set_parameter(NodeDecorator.SCALE_DISK_ATTACH_SIZE, 20)
-                disk_uuid = self.client.attach_disk(node_instance)
+                disk_uuid = self.client._attach_disk(node_instance)
                 print '================================================================='
                 print ('Disk created with uuid %s ' %disk_uuid)
 
@@ -221,7 +221,7 @@ lvs
                             print 'The status of the attached disk %s' %disk['status']
 
                             node_instance.set_parameter(NodeDecorator.SCALE_DISK_DETACH_DEVICE, disk_uuid)
-                            self.client.detach_disk(node_instance)
+                            self.client._detach_disk(node_instance)
 
             vm_list = self.client.list_instances()
             for i in vm_list:
