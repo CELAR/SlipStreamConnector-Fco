@@ -30,6 +30,7 @@ from packages.fco_rest import rest_create_server
 from packages.fco_rest import wait_for_install
 from packages.fco_rest import wait_for_job
 from packages.fco_rest import wait_for_resource
+from packages.fco_rest import get_prod_offer
 
 import config
 import argparse
@@ -93,21 +94,41 @@ def AddKey(auth_parms, server_uuid, customerUUID, publicKey):
 def create_disk(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
     """ Function to create disk """
 
-    # get product offer uuid for the disk in question
-    prod_offer_uuid = get_prod_offer_uuid(auth_parms, prod_offer)
+    prod_offer = get_prod_offer(auth_parms, prod_offer)
+    prod_component = prod_offer['componentConfig']
+    print prod_component
 
-    disk_job = rest_create_disk(auth_parms, vdc_uuid, prod_offer_uuid, disk_name, disk_size)
+    prod_conf = prod_component[0]['productConfiguredValues']
+    validator = prod_conf[0]
+    validateString = validator['validator']['validateString']
+    validateStringList = validateString.split(",")
 
-    disk_uuid = disk_job['itemUUID']
-    print("our newly created disk UUID=" + disk_uuid)
+    print 'Valid Disk Size for product offer: '
+    print validateString
 
-    # Check the job completes
-    status = wait_for_job(auth_parms, disk_job['resourceUUID'], "SUCCESSFUL", 90)
-    if (status != 0):
-        raise Exceptions.ExecutionException("Failed to add create disk (uuid=" + disk_uuid + ")")
+    allowed = False
+    for size in validateStringList:
+        if (int(size) == disk_size):
+                allowed = True
 
-    return disk_uuid
-#
+    if (allowed == True):
+        # get product offer uuid for the disk in question
+        prod_offer_uuid = prod_offer['resourceUUID']
+        disk_job = rest_create_disk(auth_parms, vdc_uuid, prod_offer_uuid, disk_name, disk_size)
+        disk_uuid = disk_job['itemUUID']
+        print("our newly created disk UUID=" + disk_uuid)
+
+        # Check the job completes
+        status = wait_for_job(auth_parms, disk_job['resourceUUID'], "SUCCESSFUL", 90)
+        if (status != 0):
+                raise Exceptions.ExecutionException("Failed to add create disk (uuid=" + disk_uuid + ")")
+
+        return disk_uuid
+
+    if (allowed != True):
+        raise Exceptions.ExecutionException("Invalid disk size for the product offer. Valid Disk sizes: %s" %validateString)
+
+    return ""
 
 def build_server(auth_parms, customer_uuid, image_uuid, vdc_uuid, server_po_uuid, boot_disk_po_uuid,
                 server_name, ram_amount, cpu_count, networkType, cluster_uuid, public_key, context_script):

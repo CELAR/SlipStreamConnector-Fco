@@ -355,6 +355,33 @@ def get_prod_offer_uuid(auth_parms, prod_offer_name):
     print("Product Offer UUID for " + prod_offer_name + " is " + prod_offer_uuid)
     return prod_offer_uuid
 
+def get_prod_offer(auth_parms, prod_offer_name):
+    """ Get product offer UUID when given product offer name """
+    sf = { "searchFilter" :
+          { "filterConditions": [{"condition": "IS_EQUAL_TO",
+                                  "field": "resourceState",
+                                  "value": ["ACTIVE"]
+                                 },
+                                 {"condition": "IS_EQUAL_TO",
+                                  "field": "resourceName",
+                                  "value": [prod_offer_name]
+                                 }
+                                ]
+          }
+        }
+
+
+    print("Product Offer Search Filter:")
+    print(sf)
+
+    prod_offer_result_set = rest_list_resource(auth_parms, res_type="productoffer", payload=sf)
+
+    print("Prod_Offer_Result_Set:\n");
+    print prod_offer_result_set
+
+    # return the first set as the result set obtained has totalCount of 1 as the PO name is unique
+    return prod_offer_result_set['list'][0]
+
 def list_sshkeys(auth_parms, customer_uuid):
     sf = { "searchFilter" :
           { "filterConditions": [{"condition": "IS_EQUAL_TO",
