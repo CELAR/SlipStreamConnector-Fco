@@ -91,7 +91,7 @@ def AddKey(auth_parms, server_uuid, customerUUID, publicKey):
 
     return attach_ret
 
-def create_disk(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
+def validate_disk_size(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
     """ Function to create disk """
 
     prod_offer = get_prod_offer(auth_parms, prod_offer)
@@ -111,24 +111,27 @@ def create_disk(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
         if (int(size) == disk_size):
                 allowed = True
 
-    if (allowed == True):
-        # get product offer uuid for the disk in question
-        prod_offer_uuid = prod_offer['resourceUUID']
-        disk_job = rest_create_disk(auth_parms, vdc_uuid, prod_offer_uuid, disk_name, disk_size)
-        disk_uuid = disk_job['itemUUID']
-        print("our newly created disk UUID=" + disk_uuid)
-
-        # Check the job completes
-        status = wait_for_job(auth_parms, disk_job['resourceUUID'], "SUCCESSFUL", 90)
-        if (status != 0):
-                raise Exceptions.ExecutionException("Failed to add create disk (uuid=" + disk_uuid + ")")
-
-        return disk_uuid
-
     if (allowed != True):
         raise Exceptions.ExecutionException("Invalid disk size for the product offer. Valid Disk sizes: %s" %validateString)
 
-    return ""
+def create_disk(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
+    """ Function to create disk """
+
+    # get product offer uuid for the disk in question
+    prod_offer_uuid = get_prod_offer_uuid(auth_parms, prod_offer)
+
+    disk_job = rest_create_disk(auth_parms, vdc_uuid, prod_offer_uuid, disk_name, disk_size)
+
+    disk_uuid = disk_job['itemUUID']
+    print("our newly created disk UUID=" + disk_uuid)
+
+    # Check the job completes
+    status = wait_for_job(auth_parms, disk_job['resourceUUID'], "SUCCESSFUL", 90)
+    if (status != 0):
+        raise Exceptions.ExecutionException("Failed to add create disk (uuid=" + disk_uuid + ")")
+
+    return disk_uuid
+#
 
 def build_server(auth_parms, customer_uuid, image_uuid, vdc_uuid, server_po_uuid, boot_disk_po_uuid,
                 server_name, ram_amount, cpu_count, networkType, cluster_uuid, public_key, context_script):
