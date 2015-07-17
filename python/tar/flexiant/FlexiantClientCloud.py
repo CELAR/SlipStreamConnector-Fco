@@ -437,6 +437,10 @@ class FlexiantClientCloud(BaseCloudConnector):
         if (disk_uuid != ""):
             attach_disk(auth, vm_uuid, disk_uuid=disk_uuid, index='2')
 
+	print 'Restart the VM'
+        server_data=[vm_uuid]
+        start_server(auth, server_data)
+
 	print("Waiting for the server to get in RUNNING state")
         ret = wait_for_server(auth, vm_uuid, 'RUNNING')
         if (ret != 0):
