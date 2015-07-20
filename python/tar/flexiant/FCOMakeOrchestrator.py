@@ -31,6 +31,7 @@ from packages.fco_rest import wait_for_install
 from packages.fco_rest import wait_for_job
 from packages.fco_rest import wait_for_resource
 from packages.fco_rest import get_prod_offer
+from packages.fco_rest import modify_cpu_ram
 
 import config
 import argparse
@@ -91,9 +92,63 @@ def AddKey(auth_parms, server_uuid, customerUUID, publicKey):
 
     return attach_ret
 
-def validate_disk_size(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
-    """ Function to create disk """
+def validate_ram_cpu_size(auth_parms, prod_offer, cpu_size, ram_size):
+    # Check if the cpu and ram input is negative
+    if ((int(cpu_size) <= 0) or ((int(ram_size) <= 0))):
+        raise Exceptions.ExecutionException("CPU and RAM amount should be greater than 0")
 
+    prod_offer = get_prod_offer(auth_parms, prod_offer)
+    prod_component = prod_offer['componentConfig']
+    print prod_component
+
+    prod_conf_cpu = prod_component[0]['productConfiguredValues']
+    validator_cpu = prod_conf_cpu[0]
+    validateString_cpu = validator_cpu['validator']['validateString']
+    validateStringList_cpu = validateString_cpu.split("-")
+
+    print 'Valid CPU Core for product offer: '
+    print validateString_cpu
+
+    cpu_allowed = False
+    # For the Standard disk PO the validateString returned is: 1-10.
+    # Validation will fail if the format changes.
+    if (int(cpu_size) >= int(validateStringList_cpu[0]) and int(cpu_size) <= int(validateStringList_cpu[1])):
+        cpu_allowed = True
+
+    if (cpu_allowed != True):
+        raise Exceptions.ExecutionException("Invalid disk size for the product offer. Valid Disk sizes: %s" %validateString_cpu)
+
+    prod_conf_ram = prod_component[1]['productConfiguredValues']
+    validator_ram = prod_conf_ram[0]
+    validateString_ram = validator_ram['validator']['validateString']
+    validateStringList_ram = validateString_ram.split(",")
+
+    print 'Valid RAM amount for product offer: '
+    print validateString_ram
+
+    ram_allowed = False
+    for size in validateStringList_ram:
+        if (int(size) == int(ram_size)):
+                ram_allowed = True
+
+    if (ram_allowed != True):
+        raise Exceptions.ExecutionException("Invalid disk size for the product offer. Valid Disk sizes: %s" %validateString_ram)
+
+
+def resize_cpu_ram(auth_parms, vm_uuid, serverName, clusterUUID, vdcUUID, cpu, ram):
+    """ Function to resize the server """
+    product_offer = 'Standard Server'
+    server_po_uuid = get_prod_offer_uuid(auth_parms, product_offer)
+
+    if (server_po_uuid == ""):
+        raise Exceptions.ExecutionException("No '" + product_offer + "' Product Offer found")
+
+    if(server_po_uuid != ""):
+        # Modify the server
+        modify_cpu_ram(auth_parms, vm_uuid, serverName, clusterUUID, vdcUUID, cpu, ram, server_po_uuid)
+
+
+def validate_disk_size(auth_parms, prod_offer, disk_size, disk_name, vdc_uuid):
     prod_offer = get_prod_offer(auth_parms, prod_offer)
     prod_component = prod_offer['componentConfig']
     print prod_component
