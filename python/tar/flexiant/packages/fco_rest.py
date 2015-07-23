@@ -15,35 +15,32 @@ def getToken(endpoint, username, cust_uuid, password):
     tokenPayload = {'automaticallyRenew':'True'}
     tokenRequest = requests.get(tokenURL, params=tokenPayload,
                                  auth=(apiUserName, password))
-    
+
     retry = True
     count = 1
-    
+
     while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
+
         tokenRequest = requests.get(tokenURL, params=tokenPayload,
                                 auth=(apiUserName, password))
-    
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-             token = tokenRequest.content
-             tokenObj = json.loads(token)
-             return tokenObj['publicToken']
-         
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            raise Exception("Failed contacting %s with %s (%s)" % (
-            tokenURL, tokenRequest.reason, tokenRequest.status_code))
+        if tokenRequest.ok:
+            print"request accepted"
+            token = tokenRequest.content
+            tokenObj = json.loads(token)
+            return tokenObj['publicToken']
         
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+        if (tokenRequest.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count
             time.sleep(WAIT_TIME)
             count = count + 1
-    
+        else:
+            print"request not accepted"
+            raise Exception("Failed contacting %s with %s (%s)" % (
+            tokenURL, tokenRequest.reason, tokenRequest.status_code))
+
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         raise Exception("HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server")
-    
-    
+
 def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uuid, nic_count):
 
     createURL = auth_parms['endpoint'] + "rest/user/current/resources/nic"
@@ -87,23 +84,24 @@ def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uu
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""       
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -151,23 +149,24 @@ def create_network(auth_parms, cluster_uuid, network_type, vdc_uuid, nic_count):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""      
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -286,18 +285,17 @@ def rest_create_image(auth_parms, baseUUID, clusterUUID, vdcUUID, size, default_
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -368,24 +366,25 @@ def rest_list_resource(auth_parms, res_type, payload):
         # print res.status_code
 
         # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            raise RuntimeError(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         raise RuntimeError("HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server")
@@ -420,24 +419,25 @@ def rest_change_server_status(auth_parms, server_uuid, new_state):
         # print res.status_code
 
         # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -549,23 +549,24 @@ def create_sshkey(auth_parms, public_key, public_key_name):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -594,24 +595,25 @@ def attach_ssh_key(auth_parms, server_uuid, sshkey_uuid):
         # print res.status_code
 
         # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -646,23 +648,24 @@ def add_nic_to_server(auth_parms, server_uuid, nic_uuid, index):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -694,25 +697,26 @@ def attach_disk(auth_parms, server_uuid, disk_uuid, index):
         print res.content
         # print res.status_code
 
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
+       # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -744,23 +748,24 @@ def detach_disk(auth_parms, server_uuid, disk_uuid):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+  	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -959,23 +964,24 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -1024,23 +1030,24 @@ def rest_create_disk(auth_parms, vdc_uuid, disk_po_uuid, disk_name, disk_size):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -1079,23 +1086,24 @@ def create_vdc(auth, cluster_uuid, vdc_name):
 
         # Status 202 (Accepted) is good
         if (res.status_code == requests.codes.accepted):
+            print"request accepted"
             # print("Done")
             response = json.loads(res.content)
             # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+ 	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -1237,24 +1245,25 @@ def rest_delete_resource(auth_parms, resource_uuid, res_type):
         # print res.status_code
 
         # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print("Done")
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
+            # print("Done")
             response = json.loads(res.content)
-            print "response=" + str(response)
+            # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
@@ -1298,24 +1307,25 @@ def modify_cpu_ram(auth_parms, server_uuid, server_name, cluster_uuid, vdc_uuid,
         # print res.status_code
 
         # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print("Done")
+        if (res.status_code == requests.codes.ok):
+            print"request accepted"
+            # print("Done")
             response = json.loads(res.content)
-            print "response=" + str(response)
+            # print "response=" + str(response)
             retry = False
             return response
-        # For errors like: 401/502/503
-        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print(response['message'] + " (error code: " + response['errorCode'] + ")")
-            retry = False
-            return ""
         
         if (res.status_code == 429):
             print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
             time.sleep(WAIT_TIME)
             count = count + 1
+        else:
+            print"request not accepted"
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print("HTTP response code: ", res.status_code)
+	    retry = False
+            return ""  
     
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
