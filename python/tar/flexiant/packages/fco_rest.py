@@ -6,6 +6,8 @@ import time
 logging.getLogger("requests").setLevel(logging.WARNING)
 isVerbose = False
 
+WAIT_TIME = 30 #seconds 
+MAX_NO_ATTEMPTS = 5
 
 def getToken(endpoint, username, cust_uuid, password):
     tokenURL = "%srest/user/current/authentication" % endpoint
@@ -410,28 +412,48 @@ def create_sshkey(auth_parms, public_key, public_key_name):
 
     payload = ssh_key
 
-
     print(payload)
     payload_as_string = json.JSONEncoder().encode(payload)
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-#    print(res.content)
-    print("==============================================================")
+    
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):      
+        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-
-    # Status 202 (accepted) is good
-    if (res.status_code == requests.codes.accepted):
-      # print("Done")
-      response = json.loads(res.content)
-      # print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
-
-    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
 
 def attach_ssh_key(auth_parms, server_uuid, sshkey_uuid):
@@ -441,19 +463,43 @@ def attach_ssh_key(auth_parms, server_uuid, sshkey_uuid):
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
 
-    res = requests.put(attachURL, auth=(auth_parms['token'], ''), headers=headers)
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):      
+        res = requests.put(attachURL, auth=(auth_parms['token'], ''), headers=headers)
+ 
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-    # Status 200 is good
-    if (res.status_code == requests.codes.ok):
-      # print("Done")
-      response = json.loads(res.content)
-      # print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
-
-    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
 
 def add_nic_to_server(auth_parms, server_uuid, nic_uuid, index):
@@ -467,22 +513,45 @@ def add_nic_to_server(auth_parms, server_uuid, nic_uuid, index):
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
 
-    res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        
+        res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+           
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-    # Status 202 (Accepted) is good as it means the job will at least be attempted
-    if (res.status_code == requests.codes.accepted):
-      # print("Done")
-      response = json.loads(res.content)
-      print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
-
-    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
-
-    # return ret_val
 
 def attach_disk(auth_parms, server_uuid, disk_uuid, index):
 
@@ -493,28 +562,45 @@ def attach_disk(auth_parms, server_uuid, disk_uuid, index):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-#    print(res.content)
-    print("==============================================================")
+    
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        
+        res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+            
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-
-    print(res.url)
-
-    print("res=" + str(res))
-    print res.content
-    # print res.status_code
-
-    # Status 200 is good
-    if (res.status_code == requests.codes.ok):
-      # print("Done")
-      response = json.loads(res.content)
-      # print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
-
-    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
 
 def detach_disk(auth_parms, server_uuid, disk_uuid):
@@ -524,23 +610,45 @@ def detach_disk(auth_parms, server_uuid, disk_uuid):
     # payload_as_string = json.JSONEncoder().encode(payload)
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    res = requests.put(detachURL, data='', auth=(auth_parms['token'], ''), headers=headers)
-    print(res.content)
-    print("==============================================================")
-    print(res.url)
-    print("res=" + str(res))
-    print res.content
-    print res.status_code
+    
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        
+        res = requests.put(detachURL, data='', auth=(auth_parms['token'], ''), headers=headers)
+           
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-    # Status 200 is good
-    if (res.status_code == requests.codes.ok):
-      print("Done")
-      response = json.loads(res.content)
-      print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
 
 def wait_for_job(auth_parms, job_uuid, status, time_limit):
@@ -715,31 +823,47 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
 
     print(payload)
     payload_as_string = json.JSONEncoder().encode(payload)
-
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-#    print(res.content)
-    print("==============================================================")
+        
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        
+        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
+            
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        # print res.status_code
 
-
-    print(res.url)
-
-    print("res=" + str(res))
-    print res.content
-    # print res.status_code
-
-    # Status 202 (Accepted) is good
-    if (res.status_code == requests.codes.accepted):
-      # print("Done")
-      response = json.loads(res.content)
-      # print "response=" + str(response)
-      return response
-
-    # Something went wrong. Pick out the status code and message
-    response = json.loads(res.content)
-
-    # print(response['message'] + " (error code: " + response['errorCode'] + ")")
+        # Status 202 (Accepted) is good
+        if (res.status_code == requests.codes.accepted):
+            # print("Done")
+            response = json.loads(res.content)
+            # print "response=" + str(response)
+            retry = False
+            return response
+        # For errors like: 401/502/503
+        if ((res.status_code != requests.codes.accepted) or (res.status_code != 429)):
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            print(response['message'] + " (error code: " + response['errorCode'] + ")")
+            retry = False
+            return ""
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
     return ""
 
 def rest_create_disk(auth_parms, vdc_uuid, disk_po_uuid, disk_name, disk_size):
