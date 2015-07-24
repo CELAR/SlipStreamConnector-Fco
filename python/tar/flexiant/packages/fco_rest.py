@@ -24,7 +24,6 @@ def getToken(endpoint, username, cust_uuid, password):
         tokenRequest = requests.get(tokenURL, params=tokenPayload,
                                 auth=(apiUserName, password))
         if tokenRequest.ok:
-            print"request accepted"
             token = tokenRequest.content
             tokenObj = json.loads(token)
             return tokenObj['publicToken']
@@ -34,12 +33,87 @@ def getToken(endpoint, username, cust_uuid, password):
             time.sleep(WAIT_TIME)
             count = count + 1
         else:
-            print"request not accepted"
             raise Exception("Failed contacting %s with %s (%s)" % (
             tokenURL, tokenRequest.reason, tokenRequest.status_code))
 
     if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
         raise Exception("HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server")
+
+
+def rest_submit_postrequest(theURL, payload, headers, auth_parms):
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        res = requests.post(theURL, payload, auth=(auth_parms['token'], ''), headers=headers)   
+        print("==============================================================")
+        print "Request submitted, response URL and contents:"
+        print(res.url)
+        print res.content
+        print("HTTP response code: ", res.status_code)
+
+        # Status 202 (Accepted) is good
+        if ((res.status_code == requests.codes.accepted) or (res.status_code == requests.codes.ok)):
+            response = json.loads(res.content)
+            retry = False
+            return response
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+        else:
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            retry = False
+            return ""
+        print("==============================================================")       
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
+    return ""
+
+
+def rest_submit_putrequest(theURL, payload, headers, auth_parms):
+    
+    retry = True
+    count = 1
+    
+    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
+        
+        res = requests.put(theURL, payload, auth=(auth_parms['token'], ''), headers=headers)   
+        #    print(res.content)
+        print("==============================================================")
+        print(res.url)
+        print("res=" + str(res))
+        print res.content
+        print("HTTP response code: ", res.status_code)
+        
+        # Status 202 (Accepted) is good
+        if ((res.status_code == requests.codes.accepted) or (res.status_code == requests.codes.ok)):
+            response = json.loads(res.content)
+            retry = False
+            return response
+        
+        if (res.status_code == 429):
+            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
+            time.sleep(WAIT_TIME)
+            count = count + 1
+        else:
+            # Something else went wrong. Pick out the status code and message
+            response = json.loads(res.content)
+            retry = False
+            return "" 
+        print("==============================================================")      
+    
+    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
+        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
+        print(response['message'] + " (error code: " + response['errorCode'] + ")")
+    
+    return ""
+
 
 def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uuid, nic_count):
 
@@ -69,45 +143,8 @@ def rest_create_nic(auth_parms, cluster_uuid, network_type, network_uuid, vdc_uu
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
     
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)   
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""       
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 
 def create_network(auth_parms, cluster_uuid, network_type, vdc_uuid, nic_count):
@@ -134,45 +171,8 @@ def create_network(auth_parms, cluster_uuid, network_type, vdc_uuid, nic_count):
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
     
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers) 
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""      
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 def get_nic_uuid(auth_parms, netTypeSought, cluster_uuid):
     """ function to find a nic of the desired type """
@@ -264,44 +264,8 @@ def rest_create_image(auth_parms, baseUUID, clusterUUID, vdcUUID, size, default_
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 def list_image(auth_params, uuid):
     """ Get Image details """
@@ -404,46 +368,8 @@ def rest_change_server_status(auth_parms, server_uuid, new_state):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.put(URL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.ok):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_putrequest(URL, payload_as_string, headers, auth_parms)
+    return result
 
 def get_prod_offer_uuid(auth_parms, prod_offer_name):
     """ Get product offer UUID when given product offer name """
@@ -534,45 +460,8 @@ def create_sshkey(auth_parms, public_key, public_key_name):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):      
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 def attach_ssh_key(auth_parms, server_uuid, sshkey_uuid):
 
@@ -580,46 +469,8 @@ def attach_ssh_key(auth_parms, server_uuid, sshkey_uuid):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):      
-        res = requests.put(attachURL, auth=(auth_parms['token'], ''), headers=headers)
- 
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.ok):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_putrequest(attachURL, '', headers, auth_parms)
+    return result
 
 def add_nic_to_server(auth_parms, server_uuid, nic_uuid, index):
     """ Function to add NIC to server """
@@ -631,47 +482,8 @@ def add_nic_to_server(auth_parms, server_uuid, nic_uuid, index):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-           
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_putrequest(attachURL, payload_as_string, headers, auth_parms)
+    return result
 
 def attach_disk(auth_parms, server_uuid, disk_uuid, index):
 
@@ -682,96 +494,15 @@ def attach_disk(auth_parms, server_uuid, disk_uuid, index):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-            
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-       # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.ok):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_putrequest(attachURL, payload_as_string, headers, auth_parms)
+    return result
 
 def detach_disk(auth_parms, server_uuid, disk_uuid):
     detachURL = auth_parms['endpoint'] + "rest/user/current/resources/server/" + server_uuid + "/disk/" + disk_uuid + "/detach"
 
-    # payload = {"index": index}
-    # payload_as_string = json.JSONEncoder().encode(payload)
-    # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.put(detachURL, data='', auth=(auth_parms['token'], ''), headers=headers)
-           
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-  	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_putrequest(detachURL, '', headers, auth_parms)
+    return result
 
 def wait_for_job(auth_parms, job_uuid, status, time_limit):
     """ check resource has reached state """
@@ -947,48 +678,8 @@ def rest_create_server(auth_parms, server_name, server_po_uuid, image_uuid, clus
     payload_as_string = json.JSONEncoder().encode(payload)
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-        
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-            
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
-
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 def rest_create_disk(auth_parms, vdc_uuid, disk_po_uuid, disk_name, disk_size):
 
@@ -1007,53 +698,13 @@ def rest_create_disk(auth_parms, vdc_uuid, disk_po_uuid, disk_name, disk_size):
 
     payload = disk
 
-
     print(payload)
     payload_as_string = json.JSONEncoder().encode(payload)
 
-
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)   
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth_parms)
+    return result
 
 def create_vdc(auth, cluster_uuid, vdc_name):
 
@@ -1070,46 +721,8 @@ def create_vdc(auth, cluster_uuid, vdc_name):
 
     # Need to set the content type, because if we don't the payload is just silently ignored
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.post(createURL, data=payload_as_string, auth=(auth['token'], ''), headers=headers) 
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.accepted):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
- 	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
+    result = rest_submit_postrequest(createURL, payload_as_string, headers, auth)
+    return result
 
 def wait_for_resource(auth_parms, res_uuid, state, res_type):
     """ check resource has reached desired state """
@@ -1223,6 +836,7 @@ def _list_servers(endpoint, token):
     else:
         raise RuntimeError("Error - HTTP status code: " + str(res.status_code))
    
+   
 def rest_delete_resource(auth_parms, resource_uuid, res_type):
     attachURL = auth_parms['endpoint'] + "rest/user/current/resources/" + res_type + "/" + resource_uuid
     cascade = { "cascade": True }
@@ -1271,8 +885,9 @@ def rest_delete_resource(auth_parms, resource_uuid, res_type):
     
     return ""
  
+ 
 def modify_cpu_ram(auth_parms, server_uuid, server_name, cluster_uuid, vdc_uuid, cpu_count, ram_amount, server_po_uuid):
-    attachURL = auth_parms['endpoint'] + "rest/user/current/resources/server/" + server_uuid
+    theURL = auth_parms['endpoint'] + "rest/user/current/resources/server/" + server_uuid
 
     server = {
               "resourceName" : server_name,
@@ -1292,44 +907,5 @@ def modify_cpu_ram(auth_parms, server_uuid, server_name, cluster_uuid, vdc_uuid,
     print payload
     payload_as_string = json.JSONEncoder().encode(payload)
     headers = {'content-type': 'application/json'}
-    
-    retry = True
-    count = 1
-    
-    while ((count <= MAX_NO_ATTEMPTS) and (retry == True)):
-        
-        res = requests.put(attachURL, data=payload_as_string, auth=(auth_parms['token'], ''), headers=headers)
-        #    print(res.content)
-        print("==============================================================")
-        print(res.url)
-        print("res=" + str(res))
-        print res.content
-        # print res.status_code
-
-        # Status 202 (Accepted) is good
-        if (res.status_code == requests.codes.ok):
-            print"request accepted"
-            # print("Done")
-            response = json.loads(res.content)
-            # print "response=" + str(response)
-            retry = False
-            return response
-        
-        if (res.status_code == 429):
-            print "Server busy - received 429 response, wait and retry. Attempt number: ", count 
-            time.sleep(WAIT_TIME)
-            count = count + 1
-        else:
-            print"request not accepted"
-            # Something else went wrong. Pick out the status code and message
-            response = json.loads(res.content)
-            print("HTTP response code: ", res.status_code)
-	    retry = False
-            return ""  
-    
-    if ((retry == True) and (count == MAX_NO_ATTEMPTS)):
-        print "HTTP 429 ERROR, Maximum unsuccessful attempts made to send request to the server"
-        print(response['message'] + " (error code: " + response['errorCode'] + ")")
-    
-    return ""
-
+    result = rest_submit_putrequest(theURL, payload_as_string, headers, auth_parms)
+    return result
