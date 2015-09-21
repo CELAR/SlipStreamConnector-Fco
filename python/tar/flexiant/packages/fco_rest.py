@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("requests").setLevel(logging.WARNING)
 isVerbose = False
 
 WAIT_TIME = 30 #seconds 
