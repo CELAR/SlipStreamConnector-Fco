@@ -168,11 +168,10 @@ class FlexiantClientCloud(BaseCloudConnector):
         preExport = "<celar-code><![CDATA["
         preBoot = "echo This is the pre-boot"
         postBoot = "]]></celar-code>"
-	print "Is build image()? "
-        print self.is_build_image()
-        print "result is: "
-        print self.is_build_image() and ''
-        return self._get_bootstrap_script(nodename, preExport, preBoot, postBoot)
+        if self.is_build_image():
+		return ''
+	else
+		return self._get_bootstrap_script(nodename, preExport, preBoot, postBoot)
 
     def _stop_deployment(self):
         ids = [vm['id'] for vm in self.get_vms().itervalues()]
