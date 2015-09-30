@@ -245,7 +245,7 @@ def rest_create_image(auth_parms, baseUUID, clusterUUID, vdcUUID, size, default_
     imageData = { "baseUUID": baseUUID,
              "clusterUUID" : clusterUUID,
              "ctSupport" : False,
-             "resourceName" : "ImageX",
+             "resourceName" : "ImageX-test",
              "resourceType" : "IMAGE",
              "vdcUUID" : vdcUUID,
              "vmSupport" : True,
