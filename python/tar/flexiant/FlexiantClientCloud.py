@@ -170,7 +170,7 @@ class FlexiantClientCloud(BaseCloudConnector):
         postBoot = "]]></celar-code>"
         if self.is_build_image():
 		return ''
-	else
+	else:
 		return self._get_bootstrap_script(nodename, preExport, preBoot, postBoot)
 
     def _stop_deployment(self):
