@@ -9,12 +9,10 @@ Capabilities
 
 | Capability  | State |
 | ----------- | :---: |
-| Run Image | yes |
-| Run Deployment | yes |
-| Build Image | yes |
-| Extra disk volatile | yes |
+| Run Image | ✓ |
+| Run Deployment | ✓ |
+| Build Image | ✓ |
+| Extra disk volatile | ✓ |
 | Extra disk persistent | no |
-
-[#6]: https://github.com/CELAR/SlipStreamConnector-Fco/issues/6
-[#7]: https://github.com/CELAR/SlipStreamConnector-Fco/issues/7
-
+| VM resize (CPU/RAM) | ✓ |
+| VM extra disk attach/detach | ✓ |
